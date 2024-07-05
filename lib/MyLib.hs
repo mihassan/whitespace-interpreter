@@ -10,44 +10,14 @@ import Data.Functor
 import Data.List
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Parser
 import Text.Read
+import Tokenizer
 import Util
 
 type ErrorMsg = String
 
 type Result = Either ErrorMsg String
-
--- Tokenizer
-
-data Token = Space | Tab | LF deriving (Eq, Ord, Show)
-
-tokenize :: String -> [Token]
-tokenize [] = []
-tokenize (' ' : xs) = Space : tokenize xs
-tokenize ('\t' : xs) = Tab : tokenize xs
-tokenize ('\n' : xs) = LF : tokenize xs
-tokenize (_ : xs) = tokenize xs
-
--- Parser
-
-data Parser s a = Parser
-  { runParser :: s -> Maybe (s, a)
-  }
-  deriving (Functor)
-
-instance Applicative (Parser s) where
-  pure a = Parser $ \s -> Just (s, a)
-  (<*>) = ap
-
-instance Monad (Parser s) where
-  return = pure
-  p >>= f = Parser $ \s -> do
-    (s', a) <- runParser p s
-    runParser (f a) s'
-
-instance Alternative (Parser s) where
-  empty = Parser $ const Nothing
-  p1 <|> p2 = Parser $ \s -> runParser p1 s <|> runParser p2 s
 
 type TokenParser a = Parser [Token] a
 
@@ -68,22 +38,6 @@ data CmdHeap = CmdHeapStore | CmdHeapLoad deriving (Eq, Show)
 data CmdIO = CmdIOPrintChar | CmdIOPrintNum | CmdIOReadChar | CmdIOReadNum deriving (Eq, Show)
 
 data CmdFlow = CmdFlowMark Label | CmdFlowSub Label | CmdFlowJump Label | CmdFlowJumpIfZero Label | CmdFlowJumpIfNeg Label | CmdFlowRet | CmdFlowExit deriving (Eq, Show)
-
-parse :: TokenParser a -> [Token] -> Maybe a
-parse p s = case runParser p s of
-  Just (_, a) -> Just a
-  _ -> Nothing
-
-anyToken :: TokenParser Token
-anyToken = Parser $ \s -> case s of
-  t : ts -> Just (ts, t)
-  _ -> Nothing
-
-satisfy :: (Token -> Bool) -> TokenParser Token
-satisfy p = anyToken >>= \t -> if p t then pure t else empty
-
-eof :: TokenParser ()
-eof = (anyToken *> empty) <|> pure ()
 
 tokenP :: Token -> TokenParser Token
 tokenP t = satisfy (== t)
