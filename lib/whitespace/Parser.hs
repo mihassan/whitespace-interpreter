@@ -1,4 +1,4 @@
-module Parser (Parser (..), parse, token, satisfy, eof) where
+module Whitespace.Parser (Parser (..), parse, token, satisfy, eof) where
 
 import Control.Applicative
 import Control.Monad

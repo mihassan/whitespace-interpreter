@@ -1,4 +1,4 @@
-module Tokenizer (Token (..), tokenize) where
+module Whitespace.Tokenizer (Token (..), tokenize) where
 
 data Token = Space | Tab | LF deriving (Eq, Ord, Show)
 

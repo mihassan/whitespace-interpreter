@@ -1,4 +1,4 @@
-module Util ((|>), (|>>), hasDuplicates) where
+module Common.Util ((|>), (|>>), hasDuplicates) where
 
 import Data.Set qualified as Set -- From the 'containers' library
 

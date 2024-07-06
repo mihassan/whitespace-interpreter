@@ -23,10 +23,10 @@ name:               WhiteSpaceInterpreter
 version:            0.1.0.0
 
 -- A short (one-line) description of the package.
--- synopsis:
+synopsis: WhiteSpace Interpreter
 
 -- A longer description of the package.
--- description:
+description: Whiteespace is an esoteric programming language that uses only spaces, tabs, and newlines. This is an interpreter for the language.
 
 -- The license under which the package is released.
 license:            MIT
@@ -42,7 +42,7 @@ maintainer:         mihassan@gmail.com
 
 -- A copyright notice.
 -- copyright:
-category:           Language
+category:           Compilers/Interpreters
 build-type:         Simple
 
 -- Extra doc files to be distributed with the package, such as a CHANGELOG or a README.
@@ -60,13 +60,15 @@ library
 
     -- Modules exported by the library.
     exposed-modules:
-      MyLib,
-      Tokenizer,
-      Util,
-      Parser
+      Whitespace
 
     -- Modules included in this library but not exported.
-    -- other-modules:
+    other-modules:
+      Common.Util,
+      Whitespace.Interpreter,
+      Whitespace.Program,
+      Whitespace.Tokenizer,
+      Whitespace.Parser
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:

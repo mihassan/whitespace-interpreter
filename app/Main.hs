@@ -1,6 +1,6 @@
 module Main where
 
-import MyLib
+import Whitespace
 import System.Environment
 import System.IO
 
