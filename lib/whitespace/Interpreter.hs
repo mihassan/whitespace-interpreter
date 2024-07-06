@@ -8,10 +8,8 @@ import Data.Char
 import Data.List
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe
 import Text.Read
 import Whitespace.Program
-import Whitespace.Tokenizer (Token (..))
 
 data ProcessStatus = Running | Exit deriving (Eq, Show)
 
@@ -42,7 +40,7 @@ markLabels Process {..} = do
   pure $ Process {labels = Map.fromList ls, ..}
 
 runProcess :: Process -> Maybe Process
-runProcess p@(Process {status = Exit, ..}) = Just p
+runProcess p@(Process {status = Exit}) = Just p
 runProcess p@(Process {..}) = do
   c <- nextCommand program ip
   p' <- runCommand c p
@@ -57,7 +55,7 @@ push Process {..} n = Process {stack = n : stack, ..}
 discard :: Process -> Number -> Process
 discard Process {..} n = case stack of
   (x : xs) -> Process {stack = x : drop n' xs, ..}
-  otehrwise -> Process {..}
+  _ -> Process {..}
   where
     n' = if n >= 0 then n else length stack
 
@@ -92,10 +90,10 @@ runCmdStack (CmdStackDiscard n) p@(Process {..})
   | otherwise = Just $ discard p n
 runCmdStack CmdStackDupTop Process {..} = case stack of
   (x : xs) -> Just Process {stack = x : x : xs, ..}
-  otherwise -> Nothing
+  _ -> Nothing
 runCmdStack CmdStackSwap Process {..} = case stack of
   (x : y : ys) -> Just Process {stack = y : x : ys, ..}
-  otherwise -> Nothing
+  _ -> Nothing
 runCmdStack CmdStackDiscardTop Process {..}
   | null stack = Nothing
   | otherwise = Just Process {stack = tail stack, ..}
@@ -104,59 +102,59 @@ arithOp :: CmdArith -> Number -> Number -> Maybe Number
 arithOp CmdArithAdd a b = Just $ b + a
 arithOp CmdArithSub a b = Just $ b - a
 arithOp CmdArithMul a b = Just $ b * a
-arithOp CmdArithDiv 0 b = Nothing
+arithOp CmdArithDiv 0 _ = Nothing
 arithOp CmdArithDiv a b = Just $ b `div` a
-arithOp CmdArithMod 0 b = Nothing
+arithOp CmdArithMod 0 _ = Nothing
 arithOp CmdArithMod a b = Just $ b `mod` a
 
 runCmdArith :: CmdArith -> Process -> Maybe Process
 runCmdArith c Process {..} = case stack of
   (a : b : rs) -> arithOp c a b |>> \x -> Process {stack = x : rs, ..}
-  otherwise -> Nothing
+  _ -> Nothing
 
 runCmdHeap :: CmdHeap -> Process -> Maybe Process
 runCmdHeap CmdHeapStore Process {..} = case stack of
   (a : b : rs) -> Just $ Process {stack = rs, heap = Map.insert b a heap, ..}
-  otherwise -> Nothing
+  _ -> Nothing
 runCmdHeap CmdHeapLoad Process {..} = case stack of
   (a : rs) -> Map.lookup a heap |>> \x -> Process {stack = x : rs, ..}
-  otherwise -> Nothing
+  _ -> Nothing
 
 runCmdIO :: CmdIO -> Process -> Maybe Process
-runCmdIO CmdIOPrintChar p@(Process {..}) = case stack of
+runCmdIO CmdIOPrintChar Process {..} = case stack of
   (x : xs) -> Just Process {output = output ++ [chr x], stack = xs, ..}
-  otherwise -> Nothing
-runCmdIO CmdIOPrintNum p@(Process {..}) = case stack of
+  _ -> Nothing
+runCmdIO CmdIOPrintNum Process {..} = case stack of
   (x : xs) -> Just Process {output = output ++ show x, stack = xs, ..}
-  otherwise -> Nothing
+  _ -> Nothing
 runCmdIO CmdIOReadChar p@(Process {..}) = case stack of
   (b : rs) -> do
     (c, p') <- readChar p
     let a = ord c
     pure p' {heap = Map.insert b a heap, stack = rs}
-  otherwise -> Nothing
+  _ -> Nothing
 runCmdIO CmdIOReadNum p@(Process {..}) = case stack of
   (b : rs) -> do
     (a, p') <- readInt p
     pure p' {heap = Map.insert b a heap, stack = rs}
-  otherwise -> Nothing
+  _ -> Nothing
 
 runCmdFlow :: CmdFlow -> Process -> Maybe Process
-runCmdFlow (CmdFlowMark l) p@(Process {..}) = incIp <$> Just Process {labels = Map.insert l ip labels, ..}
-runCmdFlow (CmdFlowSub l) p@(Process {..}) = Map.lookup l labels >>= \x -> Just Process {callStack = (ip + 1) : callStack, ip = x, ..}
-runCmdFlow (CmdFlowJump l) p@(Process {..}) = Map.lookup l labels >>= \x -> Just Process {ip = x, ..}
-runCmdFlow (CmdFlowJumpIfZero l) p@(Process {..}) = case stack of
+runCmdFlow (CmdFlowMark l) Process {..} = incIp <$> Just Process {labels = Map.insert l ip labels, ..}
+runCmdFlow (CmdFlowSub l) Process {..} = Map.lookup l labels >>= \x -> Just Process {callStack = (ip + 1) : callStack, ip = x, ..}
+runCmdFlow (CmdFlowJump l) Process {..} = Map.lookup l labels >>= \x -> Just Process {ip = x, ..}
+runCmdFlow (CmdFlowJumpIfZero l) Process {..} = case stack of
   (x : xs) | x == 0 -> Map.lookup l labels >>= \ip' -> Just Process {ip = ip', stack = xs, ..}
-  (x : xs) | otherwise -> incIp <$> Just Process {stack = xs, ..}
-  otherwise -> Nothing
-runCmdFlow (CmdFlowJumpIfNeg l) p@(Process {..}) = case stack of
+  (_ : xs) | otherwise -> incIp <$> Just Process {stack = xs, ..}
+  _ -> Nothing
+runCmdFlow (CmdFlowJumpIfNeg l) Process {..} = case stack of
   (x : xs) | x < 0 -> Map.lookup l labels >>= \ip' -> Just Process {ip = ip', stack = xs, ..}
-  (x : xs) | otherwise -> incIp <$> Just Process {stack = xs, ..}
-  otherwise -> Nothing
-runCmdFlow CmdFlowRet p@(Process {..}) = case callStack of
+  (_ : xs) | otherwise -> incIp <$> Just Process {stack = xs, ..}
+  _ -> Nothing
+runCmdFlow CmdFlowRet Process {..} = case callStack of
   (x : xs) -> Just Process {ip = x, callStack = xs, ..}
-  otherwise -> Nothing
-runCmdFlow CmdFlowExit p@(Process {..}) = Just Process {status = Exit, ..}
+  _ -> Nothing
+runCmdFlow CmdFlowExit Process {..} = Just Process {status = Exit, ..}
 
 getResult :: Maybe Process -> Result
 getResult Nothing = Left ""
