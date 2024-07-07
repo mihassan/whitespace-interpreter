@@ -1,102 +1,38 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module Whitespace.Interpreter where
 
 import Common.Util
-import Control.Monad
 import Data.Char
-import Data.List
-import Data.Map (Map)
-import Data.Map qualified as Map
-import Text.Read
+import Whitespace.Process
 import Whitespace.Program
-
-data ProcessStatus = Running | Exit deriving (Eq, Show)
 
 type ErrorMsg = String
 
 type Result = Either ErrorMsg String
 
-data Process = Process
-  { program :: Program,
-    input :: String,
-    output :: String,
-    stack :: [Number],
-    heap :: Map Number Number,
-    labels :: Map Label Int,
-    callStack :: [Int],
-    ip :: Int,
-    status :: ProcessStatus
-  }
-  deriving (Eq, Show)
-
-mkProcess :: String -> Program -> Process
-mkProcess input program = Process {output = "", stack = [], heap = Map.empty, labels = Map.empty, callStack = [], ip = 0, status = Running, ..}
-
-markLabels :: Process -> Maybe Process
-markLabels Process {..} = do
-  let ls = [(l, i) | (CmdFlow (CmdFlowMark l), i) <- zip program [0 ..]]
-  guard . not . hasDuplicates $ fst <$> ls
-  pure $ Process {labels = Map.fromList ls, ..}
-
 runProcess :: Process -> Maybe Process
-runProcess p@(Process {status = Exit}) = Just p
-runProcess p@(Process {..}) = do
-  c <- nextCommand program ip
+runProcess p | running p = do
+  c <- command p
   p' <- runCommand c p
   runProcess p'
-
-nextCommand :: Program -> Int -> Maybe Command
-nextCommand p i = p !? i
-
-push :: Process -> Number -> Process
-push Process {..} n = Process {stack = n : stack, ..}
-
-discard :: Process -> Number -> Process
-discard Process {..} n = case stack of
-  (x : xs) -> Process {stack = x : drop n' xs, ..}
-  _ -> Process {..}
-  where
-    n' = if n >= 0 then n else length stack
-
-readInt :: Process -> Maybe (Int, Process)
-readInt Process {..} = do
-  guard . not . null $ input
-  let (x : xs) = lines input
-  i <- readMaybe x
-  pure (i, Process {input = unlines xs, ..})
-
-readChar :: Process -> Maybe (Char, Process)
-readChar Process {..} = do
-  guard . not . null $ input
-  let (x : xs) = input
-  pure (x, Process {input = xs, ..})
-
-incIp :: Process -> Process
-incIp p = p {ip = ip p + 1}
+runProcess p = Just p
 
 runCommand :: Command -> Process -> Maybe Process
-runCommand (CmdStack c) = fmap incIp <$> runCmdStack c
-runCommand (CmdArith c) = fmap incIp <$> runCmdArith c
-runCommand (CmdHeap c) = fmap incIp <$> runCmdHeap c
-runCommand (CmdIO c) = fmap incIp <$> runCmdIO c
-runCommand (CmdFlow c) = runCmdFlow c
+runCommand (CmdStack c) p = runCmdStack c p >>= incIp
+runCommand (CmdArith c) p = runCmdArith c p >>= incIp
+runCommand (CmdHeap c) p = runCmdHeap c p >>= incIp
+runCommand (CmdIO c) p = runCmdIO c p >>= incIp
+runCommand (CmdFlow c) p = runCmdFlow c p
 
 runCmdStack :: CmdStack -> Process -> Maybe Process
 runCmdStack (CmdStackPush n) p = Just $ push p n
-runCmdStack (CmdStackDup n) p@(Process {..}) = stack !? n |>> push p
-runCmdStack (CmdStackDiscard n) p@(Process {..})
-  | null stack = Nothing
-  | otherwise = Just $ discard p n
-runCmdStack CmdStackDupTop Process {..} = case stack of
-  (x : xs) -> Just Process {stack = x : x : xs, ..}
-  _ -> Nothing
-runCmdStack CmdStackSwap Process {..} = case stack of
-  (x : y : ys) -> Just Process {stack = y : x : ys, ..}
-  _ -> Nothing
-runCmdStack CmdStackDiscardTop Process {..}
-  | null stack = Nothing
-  | otherwise = Just Process {stack = tail stack, ..}
+runCmdStack (CmdStackDup n) p = get p n >>= (Just . push p)
+runCmdStack (CmdStackDiscard n) p = discard p n
+runCmdStack CmdStackDupTop p = get p 0 >>= (Just . push p)
+runCmdStack CmdStackSwap p = swap p
+runCmdStack CmdStackDiscardTop p = pop p |>> snd
+
+runCmdArith :: CmdArith -> Process -> Maybe Process
+runCmdArith c p = binOp p (arithOp c)
 
 arithOp :: CmdArith -> Number -> Number -> Maybe Number
 arithOp CmdArithAdd a b = Just $ b + a
@@ -107,54 +43,43 @@ arithOp CmdArithDiv a b = Just $ b `div` a
 arithOp CmdArithMod 0 _ = Nothing
 arithOp CmdArithMod a b = Just $ b `mod` a
 
-runCmdArith :: CmdArith -> Process -> Maybe Process
-runCmdArith c Process {..} = case stack of
-  (a : b : rs) -> arithOp c a b |>> \x -> Process {stack = x : rs, ..}
-  _ -> Nothing
-
 runCmdHeap :: CmdHeap -> Process -> Maybe Process
-runCmdHeap CmdHeapStore Process {..} = case stack of
-  (a : b : rs) -> Just $ Process {stack = rs, heap = Map.insert b a heap, ..}
-  _ -> Nothing
-runCmdHeap CmdHeapLoad Process {..} = case stack of
-  (a : rs) -> Map.lookup a heap |>> \x -> Process {stack = x : rs, ..}
-  _ -> Nothing
+runCmdHeap CmdHeapStore p = do
+  (a, p') <- pop p
+  (b, p'') <- pop p'
+  pure $ store p'' b a
+runCmdHeap CmdHeapLoad p = do
+  (a, p') <- pop p
+  load p' a
 
 runCmdIO :: CmdIO -> Process -> Maybe Process
-runCmdIO CmdIOPrintChar Process {..} = case stack of
-  (x : xs) -> Just Process {output = output ++ [chr x], stack = xs, ..}
-  _ -> Nothing
-runCmdIO CmdIOPrintNum Process {..} = case stack of
-  (x : xs) -> Just Process {output = output ++ show x, stack = xs, ..}
-  _ -> Nothing
-runCmdIO CmdIOReadChar p@(Process {..}) = case stack of
-  (b : rs) -> do
-    (c, p') <- readChar p
-    let a = ord c
-    pure p' {heap = Map.insert b a heap, stack = rs}
-  _ -> Nothing
-runCmdIO CmdIOReadNum p@(Process {..}) = case stack of
-  (b : rs) -> do
-    (a, p') <- readInt p
-    pure p' {heap = Map.insert b a heap, stack = rs}
-  _ -> Nothing
+runCmdIO CmdIOPrintChar p = do
+  (x, p') <- pop p
+  pure $ write p' (chr x : "")
+runCmdIO CmdIOPrintNum p = do
+  (x, p') <- pop p
+  pure $ write p' (show x)
+runCmdIO CmdIOReadChar p = do
+  (a, p') <- readChar p
+  (b, p'') <- pop p'
+  pure $ store p'' b (ord a)
+runCmdIO CmdIOReadNum p = do
+  (a, p') <- readInt p
+  (b, p'') <- pop p'
+  pure $ store p'' b a
 
 runCmdFlow :: CmdFlow -> Process -> Maybe Process
-runCmdFlow (CmdFlowMark l) Process {..} = incIp <$> Just Process {labels = Map.insert l ip labels, ..}
-runCmdFlow (CmdFlowSub l) Process {..} = Map.lookup l labels >>= \x -> Just Process {callStack = (ip + 1) : callStack, ip = x, ..}
-runCmdFlow (CmdFlowJump l) Process {..} = Map.lookup l labels >>= \x -> Just Process {ip = x, ..}
-runCmdFlow (CmdFlowJumpIfZero l) Process {..} = case stack of
-  (x : xs) | x == 0 -> Map.lookup l labels >>= \ip' -> Just Process {ip = ip', stack = xs, ..}
-  (_ : xs) | otherwise -> incIp <$> Just Process {stack = xs, ..}
-  _ -> Nothing
-runCmdFlow (CmdFlowJumpIfNeg l) Process {..} = case stack of
-  (x : xs) | x < 0 -> Map.lookup l labels >>= \ip' -> Just Process {ip = ip', stack = xs, ..}
-  (_ : xs) | otherwise -> incIp <$> Just Process {stack = xs, ..}
-  _ -> Nothing
-runCmdFlow CmdFlowRet Process {..} = case callStack of
-  (x : xs) -> Just Process {ip = x, callStack = xs, ..}
-  _ -> Nothing
-runCmdFlow CmdFlowExit Process {..} = Just Process {status = Exit, ..}
+runCmdFlow (CmdFlowMark _) p = incIp p -- All labels are processed at the beginning. So, just move to the next instruction.
+runCmdFlow (CmdFlowSub l) p = sub p l
+runCmdFlow (CmdFlowJump l) p = jump p l
+runCmdFlow (CmdFlowJumpIfZero l) p = do
+  (x, p') <- pop p
+  if x == 0 then jump p' l else incIp p'
+runCmdFlow (CmdFlowJumpIfNeg l) p = do
+  (x, p') <- pop p
+  if x < 0 then jump p' l else incIp p'
+runCmdFlow CmdFlowRet p = ret p
+runCmdFlow CmdFlowExit p = Just $ exit p
 
 getResult :: Maybe Process -> Result
 getResult Nothing = Left ""
