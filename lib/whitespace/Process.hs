@@ -1,7 +1,7 @@
 {-# LANGUAGE ParallelListComp #-}
 
 module Whitespace.Process
-  ( Process (output),
+  ( Process,
     binOp,
     command,
     discard,
@@ -10,6 +10,7 @@ module Whitespace.Process
     incIp,
     jump,
     load,
+    output,
     process,
     pop,
     push,
@@ -36,7 +37,7 @@ import Whitespace.Program
 data Process = Process
   { program :: Program,
     input :: String,
-    output :: String,
+    outputAcc :: [String],
     stack :: [Number],
     heap :: Map Number Number,
     labels :: Map Label Int,
@@ -58,7 +59,7 @@ process input program = do
     Process
       { program = program,
         input = input,
-        output = "",
+        outputAcc = [],
         stack = [],
         heap = Map.empty,
         labels = Map.fromList ls,
@@ -147,7 +148,10 @@ readChar p = case input p of
   (x : xs) -> pure (x, p {input = xs})
 
 write :: Process -> String -> Process
-write p s = p {output = output p ++ s}
+write p s = p {outputAcc = s : outputAcc p}
+
+output :: Process -> String
+output = concat . reverse . outputAcc
 
 -- | Helper functions for flow control.
 jump :: Process -> Label -> Maybe Process

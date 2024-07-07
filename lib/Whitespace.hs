@@ -11,4 +11,4 @@ import Whitespace.Program
 import Whitespace.Tokenizer
 
 whitespace :: String -> String -> Result
-whitespace code input = tokenize code |> parse programP >>= process input >>= runProcess |> getResult
+whitespace code input = tokenize code |> parse programP >>= process input >>= runProcess |>> output |> maybeToEither "Error"

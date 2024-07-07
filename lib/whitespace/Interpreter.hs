@@ -80,7 +80,3 @@ runCmdFlow (CmdFlowJumpIfNeg l) p = do
   if x < 0 then jump p' l else incIp p'
 runCmdFlow CmdFlowRet p = ret p
 runCmdFlow CmdFlowExit p = Just $ exit p
-
-getResult :: Maybe Process -> Result
-getResult Nothing = Left ""
-getResult (Just p) = Right $ output p
