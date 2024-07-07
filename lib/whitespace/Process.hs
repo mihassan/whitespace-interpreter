@@ -69,7 +69,7 @@ process input program = do
       }
   where
     findLabels :: Program -> [(Label, Int)]
-    findLabels p = [(l, i) | CmdFlow (CmdFlowMark l) <- p | i <- [0 ..]]
+    findLabels p = [(l, i) | CmdFlow (CmdFlowMark l) <- commands p | i <- [0 ..]]
     uniqeLabels :: [(Label, Int)] -> Bool
     uniqeLabels ls = not . hasDuplicates $ fst <$> ls
 
@@ -85,11 +85,11 @@ exit p = p {status = Finished}
 -- | Helper functions for manipulating the instruction pointer and the command it points to.
 incIp :: Process -> Maybe Process
 incIp p
-  | ip p + 1 >= length (program p) = Nothing
-  | otherwise = Just p {ip = ip p + 1}
+  | validIndex (program p) (ip p + 1) = Just p {ip = ip p + 1}
+  | otherwise = Nothing
 
 command :: Process -> Maybe Command
-command p = (program p) !? (ip p)
+command p = commandAt (program p) (ip p)
 
 -- | Helper functions for manipulating the process stack.
 push :: Process -> Number -> Process

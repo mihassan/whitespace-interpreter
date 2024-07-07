@@ -1,5 +1,7 @@
 module Whitespace.Program
   ( Program,
+    commandAt,
+    commands,
     Command (..),
     CmdStack (..),
     CmdArith (..),
@@ -9,16 +11,35 @@ module Whitespace.Program
     Number,
     Label,
     programP,
+    validIndex,
   )
 where
 
 import Control.Applicative
 import Data.Functor
+import Data.IntMap.Lazy (IntMap)
+import Data.IntMap.Lazy qualified as IntMap
 import Whitespace.Parser
 import Whitespace.Tokenizer (Token (..))
 
--- | A data type representing a Whitespace program. A program is just a list of commands.
-type Program = [Command]
+-- | A data type representing a Whitespace program.
+-- | A program is just a list of commands.
+newtype Program = Program {unProgram :: IntMap Command} deriving (Eq, Show)
+
+-- | A smart constructor for constructing a Whitespace program from a list of commands.
+program :: [Command] -> Program
+program = Program . IntMap.fromAscList . zip [0 ..]
+
+commands :: Program -> [Command]
+commands = IntMap.elems . unProgram
+
+-- | Get the command at a specific index in the program.
+commandAt :: Program -> Int -> Maybe Command
+commandAt (Program p) i = IntMap.lookup i p
+
+-- | Check if a given index is a valid index in the program.
+validIndex :: Program -> Int -> Bool
+validIndex (Program p) i = IntMap.member i p
 
 -- | A data type representing a Whitespace command.
 -- | A command can be a stack manipulation command, an arithmetic command, a heap command, an I/O command, or a flow control command.
@@ -61,7 +82,7 @@ lfP = tokenP LF
 
 -- | Parse a complete Whitespace program.
 programP :: TokenParser Program
-programP = many commandP <* eof
+programP = program <$> (many commandP <* eof)
 
 -- | Parse a Whitespace command by trying to parse each type of command.
 commandP :: TokenParser Command
