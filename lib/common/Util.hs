@@ -1,4 +1,4 @@
-module Common.Util ((|>), (|>>), guardE, hasDuplicates, maybeToEither) where
+module Common.Util ((|>), (|>>), guardE, unique, maybeToEither) where
 
 import Data.Set qualified as Set -- From the 'containers' library
 
@@ -14,12 +14,12 @@ x |> f = f x
 (|>>) :: (Functor f) => f a -> (a -> b) -> f b
 x |>> f = f <$> x
 
--- >>> hasDuplicates [1, 2, 3]
--- False
--- >>> hasDuplicates [1, 2, 3, 1]
+-- >>> unique [1, 2, 3]
 -- True
-hasDuplicates :: (Ord a) => [a] -> Bool
-hasDuplicates xs = length xs /= length (Set.fromList xs)
+-- >>> unique [1, 2, 1]
+-- False
+unique :: (Ord a) => [a] -> Bool
+unique xs = length xs == length (Set.fromList xs)
 
 -- >>> maybeToEither "error" (Just 5)
 -- Right 5

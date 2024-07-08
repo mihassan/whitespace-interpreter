@@ -1,13 +1,15 @@
+{-# LANGUAGE ParallelListComp #-}
+
 module Whitespace.Program
   ( Program,
     commandAt,
-    commands,
     Command (..),
     CmdStack (..),
     CmdArith (..),
     CmdHeap (..),
     CmdIO (..),
     CmdFlow (..),
+    findLabels,
     Number,
     Label,
     programP,
@@ -15,31 +17,37 @@ module Whitespace.Program
   )
 where
 
+import Common.Util
 import Control.Applicative
 import Data.Functor
-import Data.IntMap.Lazy (IntMap)
-import Data.IntMap.Lazy qualified as IntMap
+import Data.Map (Map)
+import Data.Map qualified as Map
+import Data.Vector (Vector)
+import Data.Vector qualified as V
 import Whitespace.Parser
 import Whitespace.Tokenizer (Token (..))
 
 -- | A data type representing a Whitespace program.
 -- | A program is just a list of commands.
-newtype Program = Program {unProgram :: IntMap Command} deriving (Eq, Show)
+newtype Program = Program {unProgram :: Vector Command} deriving (Eq, Show)
 
 -- | A smart constructor for constructing a Whitespace program from a list of commands.
 program :: [Command] -> Program
-program = Program . IntMap.fromAscList . zip [0 ..]
-
-commands :: Program -> [Command]
-commands = IntMap.elems . unProgram
+program = Program . V.fromList
 
 -- | Get the command at a specific index in the program.
-commandAt :: Program -> Int -> Maybe Command
-commandAt (Program p) i = IntMap.lookup i p
+commandAt :: Program -> Int -> Either String Command
+commandAt (Program p) i = p V.!? i |> maybeToEither ("No command at index" <> show i)
 
 -- | Check if a given index is a valid index in the program.
 validIndex :: Program -> Int -> Bool
-validIndex (Program p) i = IntMap.member i p
+validIndex (Program p) i = i >= 0 && i < V.length p
+
+-- | Find all the labels in the program.
+findLabels :: Program -> Either String (Map Label Int)
+findLabels (Program p) = do
+  let ls = [(l, i) | CmdFlow (CmdFlowMark l) <- V.toList p | i <- [0 ..]]
+  guardE (unique $ fst <$> ls) "Duplicate labels found" (Map.fromList ls)
 
 -- | A data type representing a Whitespace command.
 -- | A command can be a stack manipulation command, an arithmetic command, a heap command, an I/O command, or a flow control command.

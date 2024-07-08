@@ -51,27 +51,20 @@ data Status = Running | Finished deriving (Eq, Show)
 -- | A smart constructor for Process which initializes the process with the given input and program.
 -- | It also populates the labels map with the labels in the program.
 process :: String -> Program -> Either String Process
-process input program = do
-  let ls = findLabels program
-  guardE
-    (uniqeLabels ls)
-    "Duplicate labels found"
-    Process
-      { program = program,
-        input = input,
-        outputAcc = [],
-        stack = [],
-        heap = Map.empty,
-        labels = Map.fromList ls,
-        callStack = [],
-        ip = 0,
-        status = Running
-      }
-  where
-    findLabels :: Program -> [(Label, Int)]
-    findLabels p = [(l, i) | CmdFlow (CmdFlowMark l) <- commands p | i <- [0 ..]]
-    uniqeLabels :: [(Label, Int)] -> Bool
-    uniqeLabels ls = not . hasDuplicates $ fst <$> ls
+process input program =
+  findLabels program >>= \labels ->
+    pure $
+      Process
+        { program = program,
+          input = input,
+          outputAcc = [],
+          stack = [],
+          heap = Map.empty,
+          labels = labels,
+          callStack = [],
+          ip = 0,
+          status = Running
+        }
 
 -- | Helper functions for manipulating the process.
 
@@ -89,9 +82,7 @@ incIp p
   | otherwise = Left "Instruction pointer out of bounds"
 
 command :: Process -> Either String Command
-command p =
-  commandAt (program p) (ip p)
-    |> maybeToEither ("No command found at " <> show (ip p))
+command p = commandAt (program p) (ip p)
 
 -- | Helper functions for manipulating the process stack.
 push :: Process -> Number -> Process
