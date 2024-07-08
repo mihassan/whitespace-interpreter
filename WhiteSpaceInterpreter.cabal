@@ -68,15 +68,16 @@ library
       Whitespace.Interpreter,
       Whitespace.Process,
       Whitespace.Program,
-      Whitespace.Tokenizer,
-      Whitespace.Parser
+      Whitespace.Tokenizer
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
     build-depends:
+      attoparsec,
       base ^>=4.20.0.0,
+      bytestring,
       containers,
       text,
       vector

@@ -37,8 +37,8 @@ data Process = Process
   { program :: Program,
     input :: String,
     outputAcc :: [String],
-    stack :: [Number],
-    heap :: Map Number Number,
+    stack :: [Int],
+    heap :: Map Int Int,
     labels :: Map Label Int,
     callStack :: [Int],
     ip :: Int,
@@ -85,15 +85,15 @@ command :: Process -> Either String Command
 command p = commandAt (program p) (ip p)
 
 -- | Helper functions for manipulating the process stack.
-push :: Process -> Number -> Process
+push :: Process -> Int -> Process
 push p n = p {stack = n : stack p}
 
-pop :: Process -> Either String (Number, Process)
+pop :: Process -> Either String (Int, Process)
 pop p = case stack p of
   (x : xs) -> pure (x, p {stack = xs})
   _ -> Left "Stack underflow"
 
-get :: Process -> Int -> Either String Number
+get :: Process -> Int -> Either String Int
 get p i = stack p !? i |> maybeToEither ("Stack out of bounds: " <> show i)
 
 swap :: Process -> Either String Process
@@ -102,7 +102,7 @@ swap p = do
   (b, p'') <- pop p'
   pure $ push (push p'' a) b
 
-binOp :: Process -> (Number -> Number -> Either String Number) -> Either String Process
+binOp :: Process -> (Int -> Int -> Either String Int) -> Either String Process
 binOp p f = do
   (a, p') <- pop p
   (b, p'') <- pop p'
@@ -111,7 +111,7 @@ binOp p f = do
 
 -- | Discard n elements below the top of the stack.
 -- | If n is negative, discard all elements except the top.
-discard :: Process -> Number -> Either String Process
+discard :: Process -> Int -> Either String Process
 discard p n = case stack p of
   (x : xs) -> pure $ p {stack = x : drop n' xs}
   _ -> Left "Stack underflow"
@@ -119,10 +119,10 @@ discard p n = case stack p of
     n' = if n >= 0 then n else length (stack p)
 
 -- | Helper functions for manipulating the heap.
-store :: Process -> Number -> Number -> Process
+store :: Process -> Int -> Int -> Process
 store p k v = p {heap = Map.insert k v (heap p)}
 
-load :: Process -> Number -> Either String Process
+load :: Process -> Int -> Either String Process
 load p k = do
   v <- Map.lookup k (heap p) |> maybeToEither ("Heap address not found: " <> show k)
   pure $ push p v

@@ -30,7 +30,7 @@ runCmdStack CmdStackDiscardTop p = pop p |>> snd
 runCmdArith :: CmdArith -> Process -> Either String Process
 runCmdArith c p = binOp p (arithOp c)
 
-arithOp :: CmdArith -> Number -> Number -> Either String Number
+arithOp :: CmdArith -> Int -> Int -> Either String Int
 arithOp CmdArithAdd a b = pure $ b + a
 arithOp CmdArithSub a b = pure $ b - a
 arithOp CmdArithMul a b = pure $ b * a
