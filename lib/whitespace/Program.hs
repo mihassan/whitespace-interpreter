@@ -25,7 +25,7 @@ import Data.Map qualified as Map
 import Data.Vector (Vector)
 import Data.Vector qualified as V
 import Whitespace.Parser
-import Whitespace.Tokenizer (Token (..))
+import Whitespace.Tokenizer (Token)
 
 -- | A data type representing a Whitespace program.
 -- | A program is just a list of commands.
@@ -78,15 +78,15 @@ tokenP t = satisfy (== t)
 
 -- | Parse a Space Token.
 spaceP :: TokenParser Token
-spaceP = tokenP Space
+spaceP = tokenP 's'
 
 -- | Parse a Tab Token.
 tabP :: TokenParser Token
-tabP = tokenP Tab
+tabP = tokenP 't'
 
 -- | Parse a LF Token.
 lfP :: TokenParser Token
-lfP = tokenP LF
+lfP = tokenP 'n'
 
 -- | Parse a complete Whitespace program.
 programP :: TokenParser Program
