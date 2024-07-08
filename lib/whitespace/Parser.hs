@@ -1,5 +1,6 @@
 module Whitespace.Parser (Parser (..), parse, satisfy, eof) where
 
+import Common.Util
 import Control.Applicative
 import Control.Monad
 
@@ -8,12 +9,12 @@ import Control.Monad
 -- | The Parser is defined to be instance of Functor, Applicative, Monad, and Alternative.
 -- | This allows us to use the do-notation and combinators like (<|>) and many more.
 data Parser s a = Parser
-  { runParser :: s -> Maybe (s, a)
+  { runParser :: s -> Either String (s, a)
   }
   deriving (Functor)
 
 instance Applicative (Parser s) where
-  pure a = Parser $ \s -> Just (s, a)
+  pure a = Parser $ \s -> pure (s, a)
   (<*>) = ap
 
 instance Monad (Parser s) where
@@ -23,26 +24,26 @@ instance Monad (Parser s) where
     runParser (f a) s'
 
 instance Alternative (Parser s) where
-  empty = Parser $ const Nothing
-  p1 <|> p2 = Parser $ \s -> runParser p1 s <|> runParser p2 s
+  empty = Parser . const $ Left "empty"
+  p1 <|> p2 = Parser $ \s -> case runParser p1 s of
+    Left _ -> runParser p2 s
+    r -> r
 
 -- | Parse the given input with the given parser.
 -- | Returns Just the parsed value if the parser succeeded, otherwise Nothing.
 -- | The parser is considered to have succeeded if the input is fully consumed.
-parse :: Parser s a -> s -> Maybe a
-parse p s = case runParser p s of
-  Just (_, a) -> Just a
-  _ -> Nothing
+parse :: Parser s a -> s -> Either String a
+parse p s = runParser p s |>> snd
 
 -- | Parse a value that satisfies the given predicate.
 -- | This can be used to define more complex parsers.
 satisfy :: (a -> Bool) -> Parser [a] a
 satisfy p = Parser $ \s -> case s of
-  t : ts | p t -> Just (ts, t)
-  _ -> Nothing
+  t : ts | p t -> pure (ts, t)
+  _ -> Left "satisfy"
 
 -- | Parse the end of the input.
 eof :: Parser [a] ()
 eof = Parser $ \s -> case s of
-  [] -> Just ([], ())
-  _ -> Nothing
+  [] -> pure ([], ())
+  _ -> Left "eof"

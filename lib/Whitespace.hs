@@ -10,5 +10,5 @@ import Whitespace.Process
 import Whitespace.Program
 import Whitespace.Tokenizer
 
-whitespace :: String -> String -> Result
-whitespace code input = tokenize code |> parse programP >>= process input >>= runProcess |>> output |> maybeToEither "Error"
+whitespace :: String -> String -> Either String String
+whitespace code input = tokenize code |> parse programP >>= process input >>= runProcess |>> output
