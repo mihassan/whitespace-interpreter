@@ -1,13 +1,11 @@
 module Main where
 
+import Common.UtilSpec qualified
 import Test.Hspec
 
 spec :: Spec
-spec = describe "Your module" $ do
-  it "should work" $ do
-    (1 + 1) `shouldBe` (2 :: Int)
-  it "should fail" $ do
-    (1 + 1) `shouldBe` (3 :: Int)
+spec = do
+  describe "Common.Util" Common.UtilSpec.spec
 
 main :: IO ()
 main = hspec spec
