@@ -67,8 +67,7 @@ library
       Common.Util,
       Whitespace.Interpreter,
       Whitespace.Process,
-      Whitespace.Program,
-      Whitespace.Tokenizer
+      Whitespace.Program
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:

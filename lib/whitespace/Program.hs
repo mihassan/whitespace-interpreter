@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ParallelListComp #-}
 
 module Whitespace.Program
@@ -11,7 +12,7 @@ module Whitespace.Program
     CmdFlow (..),
     findLabels,
     Label,
-    programP,
+    parseProgram,
     validIndex,
   )
 where
@@ -19,12 +20,13 @@ where
 import Common.Util
 import Control.Applicative
 import Data.Attoparsec.ByteString.Char8
+import Data.ByteString.Char8 qualified as B
 import Data.Functor
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe
 import Data.Vector (Vector)
 import Data.Vector qualified as V
-import Whitespace.Tokenizer (Token)
 
 -- | A data type representing a Whitespace program.
 -- | A program is just a list of commands.
@@ -62,20 +64,25 @@ data CmdIO = CmdIOPrintChar | CmdIOPrintNum | CmdIOReadChar | CmdIOReadNum deriv
 
 data CmdFlow = CmdFlowMark Label | CmdFlowSub Label | CmdFlowJump Label | CmdFlowJumpIfZero Label | CmdFlowJumpIfNeg Label | CmdFlowRet | CmdFlowExit deriving (Eq, Show)
 
+-- | A Token is a character in the Whitespace language. It can be a space, a tab, or a line feed.
+-- | A Token is represented as a Char. A space is 's', a tab is 't', and a line feed is 'n'.
+type Token = Char
+
 -- | A label in the Whitespace language. A label is just a list of tokens.
 type Label = [Token]
 
--- | Parse a Space Token.
-spaceP :: Parser Token
-spaceP = char 's'
+-- | Tokenize a character into a Token.
+-- | A space character is tokenized as 's', a tab character is tokenized as 't', and a line feed character is tokenized as 'n'.
+-- | All other characters are ignored.
+tokeninze :: Char -> Maybe Token
+tokeninze ' ' = pure 's'
+tokeninze '\t' = pure 't'
+tokeninze '\n' = pure 'n'
+tokeninze _ = Nothing
 
--- | Parse a Tab Token.
-tabP :: Parser Token
-tabP = char 't'
-
--- | Parse a LF Token.
-lfP :: Parser Token
-lfP = char 'n'
+-- | Parse a Whitespace program.
+parseProgram :: String -> Either String Program
+parseProgram = parseOnly programP . B.pack . mapMaybe tokeninze
 
 -- | Parse a complete Whitespace program.
 programP :: Parser Program
@@ -84,11 +91,11 @@ programP = program <$> (many commandP <* endOfInput)
 -- | Parse a Whitespace command by trying to parse each type of command.
 commandP :: Parser Command
 commandP =
-  (CmdStack <$> (spaceP *> cmdStackP))
-    <|> (CmdArith <$> (tabP *> spaceP *> cmdArithP))
-    <|> (CmdHeap <$> (tabP *> tabP *> cmdHeapP))
-    <|> (CmdIO <$> (tabP *> lfP *> cmdIOP))
-    <|> (CmdFlow <$> (lfP *> cmdFlowP))
+  (CmdStack <$> ("s" *> cmdStackP))
+    <|> (CmdArith <$> ("ts" *> cmdArithP))
+    <|> (CmdHeap <$> ("tt" *> cmdHeapP))
+    <|> (CmdIO <$> ("tn" *> cmdIOP))
+    <|> (CmdFlow <$> ("n" *> cmdFlowP))
 
 -- | Parse a whitespace number.
 -- | A number consists of:
@@ -97,9 +104,9 @@ commandP =
 -- |   - A terminating LF
 intP :: Parser Int
 intP = do
-  sign <- (tabP $> -1) <|> (spaceP $> 1)
-  bits <- many $ (tabP $> 1) <|> (spaceP $> 0)
-  _ <- lfP
+  sign <- ("t" $> -1) <|> ("s" $> 1)
+  bits <- many $ ("t" $> 1) <|> ("s" $> 0)
+  _ <- "n"
   pure $ convert sign bits 0
   where
     convert s [] acc = s * acc
@@ -107,48 +114,48 @@ intP = do
 
 -- | Parse a label. A label is a sequence of tabs and spaces followed by a LF.
 labelP :: Parser Label
-labelP = many (tabP <|> spaceP) <* lfP
+labelP = manyTill (satisfy (inClass "st")) "n"
 
 -- | Parse a stack manipulation command.
 cmdStackP :: Parser CmdStack
 cmdStackP =
-  (spaceP *> (CmdStackPush <$> intP))
-    <|> (tabP *> spaceP *> (CmdStackDup <$> intP))
-    <|> (tabP *> lfP *> (CmdStackDiscard <$> intP))
-    <|> (lfP *> spaceP $> CmdStackDupTop)
-    <|> (lfP *> tabP $> CmdStackSwap)
-    <|> (lfP *> lfP $> CmdStackDiscardTop)
+  ("s" *> (CmdStackPush <$> intP))
+    <|> ("ts" *> (CmdStackDup <$> intP))
+    <|> ("tn" *> (CmdStackDiscard <$> intP))
+    <|> ("ns" $> CmdStackDupTop)
+    <|> ("nt" $> CmdStackSwap)
+    <|> ("nn" $> CmdStackDiscardTop)
 
 -- | Parse an arithmetic command.
 cmdArithP :: Parser CmdArith
 cmdArithP =
-  (spaceP *> spaceP $> CmdArithAdd)
-    <|> (spaceP *> tabP $> CmdArithSub)
-    <|> (spaceP *> lfP $> CmdArithMul)
-    <|> (tabP *> spaceP $> CmdArithDiv)
-    <|> (tabP *> tabP $> CmdArithMod)
+  ("ss" $> CmdArithAdd)
+    <|> ("st" $> CmdArithSub)
+    <|> ("sn" $> CmdArithMul)
+    <|> ("ts" $> CmdArithDiv)
+    <|> ("tt" $> CmdArithMod)
 
 -- | Parse a heap command.
 cmdHeapP :: Parser CmdHeap
 cmdHeapP =
-  (spaceP $> CmdHeapStore)
-    <|> (tabP $> CmdHeapLoad)
+  ("s" $> CmdHeapStore)
+    <|> ("t" $> CmdHeapLoad)
 
 -- | Parse an I/O command.
 cmdIOP :: Parser CmdIO
 cmdIOP =
-  (spaceP *> spaceP $> CmdIOPrintChar)
-    <|> (spaceP *> tabP $> CmdIOPrintNum)
-    <|> (tabP *> spaceP $> CmdIOReadChar)
-    <|> (tabP *> tabP $> CmdIOReadNum)
+  ("ss" $> CmdIOPrintChar)
+    <|> ("st" $> CmdIOPrintNum)
+    <|> ("ts" $> CmdIOReadChar)
+    <|> ("tt" $> CmdIOReadNum)
 
 -- | Parse a flow control command.
 cmdFlowP :: Parser CmdFlow
 cmdFlowP =
-  (spaceP *> spaceP *> (CmdFlowMark <$> labelP))
-    <|> (spaceP *> tabP *> (CmdFlowSub <$> labelP))
-    <|> (spaceP *> lfP *> (CmdFlowJump <$> labelP))
-    <|> (tabP *> spaceP *> (CmdFlowJumpIfZero <$> labelP))
-    <|> (tabP *> tabP *> (CmdFlowJumpIfNeg <$> labelP))
-    <|> (tabP *> lfP $> CmdFlowRet)
-    <|> (lfP *> lfP $> CmdFlowExit)
+  ("ss" *> (CmdFlowMark <$> labelP))
+    <|> ("st" *> (CmdFlowSub <$> labelP))
+    <|> ("sn" *> (CmdFlowJump <$> labelP))
+    <|> ("ts" *> (CmdFlowJumpIfZero <$> labelP))
+    <|> ("tt" *> (CmdFlowJumpIfNeg <$> labelP))
+    <|> ("tn" $> CmdFlowRet)
+    <|> ("nn" $> CmdFlowExit)
