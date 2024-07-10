@@ -1,3 +1,4 @@
-module SpecHelper (module Test.Hspec) where
+module SpecHelper (module Test.Hspec, module Whitespace.Debug) where
 
 import Test.Hspec
+import Whitespace.Debug

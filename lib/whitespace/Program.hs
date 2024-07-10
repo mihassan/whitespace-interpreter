@@ -2,7 +2,7 @@
 {-# LANGUAGE ParallelListComp #-}
 
 module Whitespace.Program
-  ( Program,
+  ( Program (..),
     commandAt,
     Command (..),
     CmdStack (..),

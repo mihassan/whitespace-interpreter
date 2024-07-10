@@ -123,7 +123,8 @@ test-suite WhiteSpaceInterpreter-test
     other-modules:
       SpecHelper,
       Common.UtilSpec,
-      Whitespace.DebugSpec
+      Whitespace.DebugSpec,
+      Whitespace.ProgramSpec
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
