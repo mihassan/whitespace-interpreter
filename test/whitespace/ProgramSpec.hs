@@ -58,3 +58,27 @@ spec = do
       findLabels (Program [CmdFlow (CmdFlowJump "label"), CmdFlow (CmdFlowJump "label"), CmdFlow CmdFlowExit]) `shouldBe` Right []
     it "fails on duplicate labels" $ do
       findLabels (Program [CmdFlow (CmdFlowMark "label"), CmdFlow (CmdFlowMark "label"), CmdFlow CmdFlowExit]) `shouldBe` Left "Duplicate labels found"
+
+  describe "intP" $ do
+    it "can parse a positive number" $ do
+      parseProgram (fromReadable "sssttn") `shouldBe` Right (Program [CmdStack (CmdStackPush 3)])
+    it "can parse a negative number" $ do
+      parseProgram (fromReadable "sstttn") `shouldBe` Right (Program [CmdStack (CmdStackPush (-3))])
+    it "can parse zero" $ do
+      parseProgram (fromReadable "ssssn") `shouldBe` Right (Program [CmdStack (CmdStackPush 0)])
+    it "can parse a negative zero" $ do
+      parseProgram (fromReadable "sstsn") `shouldBe` Right (Program [CmdStack (CmdStackPush 0)])
+    it "ignores leading zeros" $ do
+      parseProgram (fromReadable "sssssstn") `shouldBe` Right (Program [CmdStack (CmdStackPush 1)])
+    it "fails on number without sign bit" $ do
+      parseProgram (fromReadable "ssn") `shouldBe` Left "endOfInput"
+    it "fails on number without terminating new line feed" $ do
+      parseProgram (fromReadable "sss") `shouldBe` Left "endOfInput"
+
+  describe "labelP" $ do
+    it "can parse a label" $ do
+      parseProgram (fromReadable "nssstn") `shouldBe` Right (Program [CmdFlow (CmdFlowMark "st")])
+    it "can parse multiple labels" $ do
+      parseProgram (fromReadable "nssstnnsstsn") `shouldBe` Right (Program [CmdFlow (CmdFlowMark "st"), CmdFlow (CmdFlowMark "ts")])
+    it "fails on label without terminating new line feed" $ do
+      parseProgram (fromReadable "nsss") `shouldBe` Left "endOfInput"
