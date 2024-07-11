@@ -32,13 +32,9 @@ import Data.Vector qualified as V
 -- | A program is just a list of commands.
 newtype Program = Program {unProgram :: Vector Command} deriving (Eq, Show)
 
--- | A smart constructor for constructing a Whitespace program from a list of commands.
-program :: [Command] -> Program
-program = Program . V.fromList
-
 -- | Get the command at a specific index in the program.
 commandAt :: Program -> Int -> Either String Command
-commandAt (Program p) i = p V.!? i |> maybeToEither ("No command at index" <> show i)
+commandAt (Program p) i = p V.!? i |> maybeToEither ("No command at index: " <> show i)
 
 -- | Check if a given index is a valid index in the program.
 validIndex :: Program -> Int -> Bool
@@ -86,7 +82,7 @@ parseProgram = parseOnly programP . B.pack . mapMaybe tokeninze
 
 -- | Parse a complete Whitespace program.
 programP :: Parser Program
-programP = program <$> (many commandP <* endOfInput)
+programP = Program . V.fromList <$> (many commandP <* endOfInput)
 
 -- | Parse a Whitespace command by trying to parse each type of command.
 commandP :: Parser Command
