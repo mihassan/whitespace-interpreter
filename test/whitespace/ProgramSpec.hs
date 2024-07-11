@@ -82,3 +82,61 @@ spec = do
       parseProgram (fromReadable "nssstnnsstsn") `shouldBe` Right (Program [CmdFlow (CmdFlowMark "st"), CmdFlow (CmdFlowMark "ts")])
     it "fails on label without terminating new line feed" $ do
       parseProgram (fromReadable "nsss") `shouldBe` Left "endOfInput"
+
+  describe "cmdStackP" $ do
+    it "can parse CmdStackPush" $ do
+      parseProgram (fromReadable "sssttn") `shouldBe` Right (Program [CmdStack (CmdStackPush 3)])
+    it "can parse CmdStackDup" $ do
+      parseProgram (fromReadable "stssttn") `shouldBe` Right (Program [CmdStack (CmdStackDup 3)])
+    it "can parse CmdStackDiscard" $ do
+      parseProgram (fromReadable "stnsttn") `shouldBe` Right (Program [CmdStack (CmdStackDiscard 3)])
+    it "can parse CmdStackDupTop" $ do
+      parseProgram (fromReadable "sns") `shouldBe` Right (Program [CmdStack CmdStackDupTop])
+    it "can parse CmdStackSwap" $ do
+      parseProgram (fromReadable "snt") `shouldBe` Right (Program [CmdStack CmdStackSwap])
+    it "can parse CmdStackDiscardTop" $ do
+      parseProgram (fromReadable "snn") `shouldBe` Right (Program [CmdStack CmdStackDiscardTop])
+
+  describe "cmdArithP" $ do
+    it "can parse CmdArithAdd" $ do
+      parseProgram (fromReadable "tsss") `shouldBe` Right (Program [CmdArith CmdArithAdd])
+    it "can parse CmdArithSub" $ do
+      parseProgram (fromReadable "tsst") `shouldBe` Right (Program [CmdArith CmdArithSub])
+    it "can parse CmdArithMul" $ do
+      parseProgram (fromReadable "tssn") `shouldBe` Right (Program [CmdArith CmdArithMul])
+    it "can parse CmdArithDiv" $ do
+      parseProgram (fromReadable "tsts") `shouldBe` Right (Program [CmdArith CmdArithDiv])
+    it "can parse CmdArithMod" $ do
+      parseProgram (fromReadable "tstt") `shouldBe` Right (Program [CmdArith CmdArithMod])
+
+  describe "cmdHeapP" $ do
+    it "can parse CmdHeapStore" $ do
+      parseProgram (fromReadable "tts") `shouldBe` Right (Program [CmdHeap CmdHeapStore])
+    it "can parse CmdHeapLoad" $ do
+      parseProgram (fromReadable "ttt") `shouldBe` Right (Program [CmdHeap CmdHeapLoad])
+
+  describe "cmdIOP" $ do
+    it "can parse CmdIOPrintChar" $ do
+      parseProgram (fromReadable "tnss") `shouldBe` Right (Program [CmdIO CmdIOPrintChar])
+    it "can parse CmdIOPrintNum" $ do
+      parseProgram (fromReadable "tnst") `shouldBe` Right (Program [CmdIO CmdIOPrintNum])
+    it "can parse CmdIOReadChar" $ do
+      parseProgram (fromReadable "tnts") `shouldBe` Right (Program [CmdIO CmdIOReadChar])
+    it "can parse CmdIOReadNum" $ do
+      parseProgram (fromReadable "tntt") `shouldBe` Right (Program [CmdIO CmdIOReadNum])
+
+  describe "cmdFlowP" $ do
+    it "can parse CmdFlowMark" $ do
+      parseProgram (fromReadable "nssstn") `shouldBe` Right (Program [CmdFlow (CmdFlowMark "st")])
+    it "can parse CmdFlowSub" $ do
+      parseProgram (fromReadable "nststn") `shouldBe` Right (Program [CmdFlow (CmdFlowSub "st")])
+    it "can parse CmdFlowJump" $ do
+      parseProgram (fromReadable "nsnstn") `shouldBe` Right (Program [CmdFlow (CmdFlowJump "st")])
+    it "can parse CmdFlowMark" $ do
+      parseProgram (fromReadable "ntsstn") `shouldBe` Right (Program [CmdFlow (CmdFlowJumpIfZero "st")])
+    it "can parse CmdFlowMark" $ do
+      parseProgram (fromReadable "nttstn") `shouldBe` Right (Program [CmdFlow (CmdFlowJumpIfNeg "st")])
+    it "can parse CmdFlowRet" $ do
+      parseProgram (fromReadable "ntn") `shouldBe` Right (Program [CmdFlow CmdFlowRet])
+    it "can parse CmdFlowExit" $ do
+      parseProgram (fromReadable "nnn") `shouldBe` Right (Program [CmdFlow CmdFlowExit])
