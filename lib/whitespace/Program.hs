@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ParallelListComp #-}
 
 module Whitespace.Program
   ( Program (..),
@@ -43,7 +42,7 @@ validIndex (Program p) i = i >= 0 && i < V.length p
 -- | Find all the labels in the program.
 findLabels :: Program -> Either String (Map Label Int)
 findLabels (Program p) = do
-  let ls = [(l, i) | CmdFlow (CmdFlowMark l) <- V.toList p | i <- [0 ..]]
+  let ls = [(l, i) | (CmdFlow (CmdFlowMark l), i) <- zip (V.toList p) [0 ..]]
   guardE (unique $ fst <$> ls) "Duplicate labels found" (Map.fromList ls)
 
 -- | A data type representing a Whitespace command.

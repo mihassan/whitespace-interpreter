@@ -1,6 +1,13 @@
-module Common.Util ((|>), (|>>), guardE, unique, maybeToEither) where
+module Common.Util ((...), (|>), (|>>), guardE, unique, maybeToEither) where
 
 import Data.Set qualified as Set -- From the 'containers' library
+
+infixl 9 ...
+
+-- >>> (length ... filter) even [1, 2, 3, 4]
+-- 2
+(...) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
+(...) = (.) . (.)
 
 infixl 1 |>, |>>
 

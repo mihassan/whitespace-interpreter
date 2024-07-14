@@ -1,7 +1,8 @@
 {-# LANGUAGE ParallelListComp #-}
 
 module Whitespace.Process
-  ( Process,
+  ( Process (..),
+    Status (..),
     binOp,
     command,
     discard,
@@ -112,6 +113,7 @@ binOp p f = do
 -- | Discard n elements below the top of the stack.
 -- | If n is negative, discard all elements except the top.
 discard :: Process -> Int -> Either String Process
+discard p 0 = pure p
 discard p n = case stack p of
   (x : xs) -> pure $ p {stack = x : drop n' xs}
   _ -> Left "Stack underflow"
@@ -150,14 +152,24 @@ output = concat . reverse . outputAcc
 jump :: Process -> Label -> Either String Process
 jump p l = do
   x <- Map.lookup l (labels p) |> maybeToEither ("Label not found: " <> show l)
-  pure $ p {ip = x}
+  if validIndex (program p) x
+    then Right p {ip = x}
+    else Left "Jump out of bounds"
 
 sub :: Process -> Label -> Either String Process
 sub p l = do
   x <- Map.lookup l (labels p) |> maybeToEither ("Label not found: " <> show l)
-  pure $ p {callStack = ip p + 1 : callStack p, ip = x}
+  if validIndex (program p) x
+    then
+      if validIndex (program p) (ip p + 1)
+        then Right p {callStack = ip p + 1 : callStack p, ip = x}
+        else Left "Subroutine out of bounds when returning"
+    else Left "Subroutine out of bounds"
 
 ret :: Process -> Either String Process
 ret p = case callStack p of
-  (x : xs) -> pure $ p {ip = x, callStack = xs}
+  (x : xs) ->
+    if validIndex (program p) x
+      then Right p {ip = x, callStack = xs}
+      else Left "Return address out of bounds"
   _ -> Left "Call stack empty"

@@ -48,6 +48,8 @@ spec = do
       findLabels (Program [CmdFlow (CmdFlowMark "label"), CmdFlow CmdFlowExit]) `shouldBe` Right [("label", 0)]
     it "can find multiple labels" $ do
       findLabels (Program [CmdFlow (CmdFlowMark "label1"), CmdFlow (CmdFlowMark "label2"), CmdFlow CmdFlowExit]) `shouldBe` Right [("label1", 0), ("label2", 1)]
+    it "can find a label in the middle of the program" $ do
+      findLabels (Program [CmdStack (CmdStackPush 0), CmdFlow (CmdFlowMark "label"), CmdFlow CmdFlowExit]) `shouldBe` Right [("label", 1)]
     it "finds no labels in an empty program" $ do
       findLabels (Program []) `shouldBe` Right []
     it "finds no labels in a program with no labels" $ do
