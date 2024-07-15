@@ -124,6 +124,7 @@ test-suite WhiteSpaceInterpreter-test
       SpecHelper,
       Common.UtilSpec,
       Whitespace.DebugSpec,
+      Whitespace.InterpreterSpec,
       Whitespace.ProgramSpec,
       Whitespace.ProcessSpec
 
