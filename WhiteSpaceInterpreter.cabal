@@ -107,6 +107,9 @@ executable WhiteSpaceInterpreter
         optparse-applicative,
         WhiteSpaceInterpreter
 
+    other-modules:
+      Paths_WhiteSpaceInterpreter
+
     -- Directories containing source files.
     hs-source-dirs:   app
 

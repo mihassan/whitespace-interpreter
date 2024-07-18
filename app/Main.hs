@@ -1,6 +1,8 @@
 module Main where
 
+import Data.Version (showVersion)
 import Options.Applicative
+import Paths_WhiteSpaceInterpreter (version)
 import System.IO
 import Whitespace
 
@@ -11,15 +13,17 @@ optsParser =
   info
     (helper <*> versionOption <*> programOptions)
     ( fullDesc
-        <> progDesc "optparse example"
+        <> progDesc "Whitespace Interpreter"
         <> header
-          "optparse-example - a small example program for optparse-applicative"
+          "Whitespace Interpreter - an interpreter for the Whitespace programming language"
     )
   where
     versionOption :: Parser (a -> a)
-    versionOption = infoOption "0.1.0.0" (long "version" <> help "Show version")
+    versionOption = infoOption (showVersion version) (long "version" <> help "Show version")
     programOptions :: Parser Opts
-    programOptions = Opts <$> strOption (short 'f' <> long "file" <> metavar "FILE" <> help "File to run")
+    programOptions =
+      Opts
+        <$> strArgument (metavar "FILE" <> help "Whitespace source file")
 
 main :: IO ()
 main = do
