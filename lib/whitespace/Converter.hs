@@ -9,10 +9,7 @@ convertFromReadable = mapMaybe go
     go 's' = Just ' '
     go 't' = Just '\t'
     go 'n' = Just '\n'
-    go ' ' = Nothing
-    go '\t' = Nothing
-    go '\n' = Nothing
-    go x = Just x
+    go _ = Nothing
 
 convertToReadable :: String -> String
 convertToReadable = mapMaybe go
@@ -21,7 +18,4 @@ convertToReadable = mapMaybe go
     go ' ' = Just 's'
     go '\t' = Just 't'
     go '\n' = Just 'n'
-    go 's' = Nothing
-    go 't' = Nothing
-    go 'n' = Nothing
-    go x = Just x
+    go _ = Nothing
