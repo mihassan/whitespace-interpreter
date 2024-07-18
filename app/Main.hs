@@ -6,9 +6,10 @@ import Paths_WhitespaceInterpreter (version)
 import System.IO
 import Whitespace
 
-data Opts = Opts {file :: String}
+data Command
+  = Run String
 
-optsParser :: ParserInfo Opts
+optsParser :: ParserInfo Command
 optsParser =
   info
     (helper <*> versionOption <*> programOptions)
@@ -20,15 +21,17 @@ optsParser =
   where
     versionOption :: Parser (a -> a)
     versionOption = infoOption (showVersion version) (long "version" <> help "Show version")
-    programOptions :: Parser Opts
-    programOptions =
-      Opts
-        <$> strArgument (metavar "FILE" <> help "Whitespace source file")
+    programOptions :: Parser Command
+    programOptions = hsubparser $ runCommand
+    runCommand :: Mod CommandFields Command
+    runCommand = command "run" (info runOptions (progDesc "Run a whitespace program."))
+    runOptions :: Parser Command
+    runOptions = Run <$> strArgument (metavar "FILE" <> help "Whitespace source file")
 
 main :: IO ()
 main = do
-  opts <- execParser optsParser
-  code <- readFile $ file opts
+  Run file <- execParser optsParser
+  code <- readFile file
   input <- getContents
   case whitespace code input of
     Left err -> hPutStrLn stderr $ "Error running code: " <> err
