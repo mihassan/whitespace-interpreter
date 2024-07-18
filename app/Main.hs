@@ -2,7 +2,7 @@ module Main where
 
 import Data.Version (showVersion)
 import Options.Applicative
-import Paths_WhiteSpaceInterpreter (version)
+import Paths_WhitespaceInterpreter (version)
 import System.IO
 import Whitespace
 
