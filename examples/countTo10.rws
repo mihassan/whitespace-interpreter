@@ -1,0 +1,27 @@
+-------------------------------------------------------------------------------
+THIS IS A READABLE WHITESPACE PROGRAM.
+WE REPRESENT WHITESPACE CHARS WITH LOWER CASE LETTERS.
+
+[SPACE] -> LOWER CASE `S`
+[TAB] -> LOWER CASE `T`
+[LINEFEED] -> LOWER CASE `N`
+
+ALL OTHER CHARACTERS INCLUDING WHITESPACE CHARACTERS ARE IGNORED.
+THIS FILE CAN BE CONVERTED TO ORIGINAL WHITESPACE PROGRAM AND THEN CAN BE RUN.
+-------------------------------------------------------------------------------
+
+STACK PUSH 1 : ssstn
+MARK "S" : nsssn
+STACK PUSH 10 : ssststsn
+STACK DUP 1 : stsstn
+SUB : tsst
+JUMP IF NEG "S" : ntttn
+STACK DUP TOP : sns
+PRINT NUM : tnst
+STACK PUSH 10 : ssststsn
+PRINT CHAR : tnss
+STACK PUSH 1 : ssstn
+ADD : tsss
+JUMP "S" : nsnsn
+MARK "T" : nsstn
+EXIT : nnn
