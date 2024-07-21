@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Main where
 
 import Data.Version (showVersion)
@@ -6,9 +8,11 @@ import Paths_WhitespaceInterpreter (version)
 import System.IO
 import Whitespace
 
+data Format = Original | Readable | Runnable deriving (Eq, Show, Read)
+
 data Command
-  = Run FilePath
-  | Convert Bool FilePath
+  = Run {runFile :: FilePath}
+  | Convert {convertFrom :: Format, convertTo :: Format, convertFile :: FilePath}
 
 optsParser :: ParserInfo Command
 optsParser =
@@ -33,19 +37,20 @@ runOptions :: Parser Command
 runOptions = Run <$> strArgument (metavar "FILE" <> help "Whitespace source file")
 
 convertCommand :: Mod CommandFields Command
-convertCommand = command "convert" (info convertOptions (progDesc "Convert between a readable whitespace program and an original whitespace program."))
+convertCommand = command "convert" (info convertOptions (progDesc "Convert a whitespace file to a different formats (i.e., Original, Readable, Runnable)."))
 
 convertOptions :: Parser Command
 convertOptions =
   Convert
-    <$> switch (long "reverse" <> short 'r' <> help "Convert a whitespace program to a readable whitespace program.")
+    <$> option auto (long "from" <> short 'f' <> metavar "FORMAT" <> help "Format to convert from")
+    <*> option auto (long "to" <> short 't' <> metavar "FORMAT" <> help "Format to convert to")
     <*> strArgument (metavar "FILE" <> help "File to convert")
 
 main :: IO ()
 main = do
   execParser optsParser >>= \case
-    Run file -> run file
-    Convert r file -> convert r file
+    Run {..} -> run runFile
+    Convert {..} -> convert convertFrom convertTo convertFile
 
 run :: FilePath -> IO ()
 run file = do
@@ -55,8 +60,25 @@ run file = do
     Left err -> hPutStrLn stderr $ "Error running code: " <> err
     Right output -> putStrLn $ "Successfully ran the code. Output: " <> output
 
-convert :: Bool -> FilePath -> IO ()
-convert toReadable file = do
-  code <- readFile file
-  let convertedCode = if toReadable then convertToReadable code else convertFromReadable code
-  putStr convertedCode
+convert :: Format -> Format -> FilePath -> IO ()
+convert from to file = readFile file >>= go from to >>= putStr
+  where
+    go Original Readable c = pure $ originalToReadable c
+    go Readable Original c = pure $ readableToOriginal c
+    go Original Runnable c = case originalToRunnable c of
+      Left err -> do
+        let msg = "Error converting to runnable code: " <> err
+        hPutStrLn stderr msg
+        pure ""
+      Right runnable -> pure runnable
+    go Runnable Original c = case runnableToOriginal c of
+      Left err -> do
+        let msg = "Error converting to original code: "
+        hPutStrLn stderr $ msg <> err
+        pure ""
+      Right original -> pure original
+    go f t c | f == t = pure c
+    go f t _ = do
+      let msg = "Cannot convert from " <> show f <> " to " <> show t
+      hPutStrLn stderr msg
+      pure ""

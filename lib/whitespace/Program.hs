@@ -3,6 +3,7 @@
 module Whitespace.Program
   ( Program (..),
     commandAt,
+    commands,
     Command (..),
     CmdStack (..),
     CmdArith (..),
@@ -10,8 +11,10 @@ module Whitespace.Program
     CmdIO (..),
     CmdFlow (..),
     findLabels,
+    fromCommands,
     Label,
     parseProgram,
+    showProgram,
     validIndex,
   )
 where
@@ -31,6 +34,14 @@ import Data.Vector qualified as V
 -- | A program is just a list of commands.
 newtype Program = Program {unProgram :: Vector Command} deriving (Eq, Show)
 
+-- | Create a program from a list of commands.
+fromCommands :: [Command] -> Program
+fromCommands = Program . V.fromList
+
+-- | Get all the commands in the program.
+commands :: Program -> [Command]
+commands = V.toList . unProgram
+
 -- | Get the command at a specific index in the program.
 commandAt :: Program -> Int -> Either String Command
 commandAt (Program p) i = p V.!? i |> maybeToEither ("No command at index: " <> show i)
@@ -47,17 +58,17 @@ findLabels (Program p) = do
 
 -- | A data type representing a Whitespace command.
 -- | A command can be a stack manipulation command, an arithmetic command, a heap command, an I/O command, or a flow control command.
-data Command = CmdStack CmdStack | CmdArith CmdArith | CmdHeap CmdHeap | CmdIO CmdIO | CmdFlow CmdFlow deriving (Eq, Show)
+data Command = CmdStack CmdStack | CmdArith CmdArith | CmdHeap CmdHeap | CmdIO CmdIO | CmdFlow CmdFlow deriving (Eq, Show, Read)
 
-data CmdStack = CmdStackPush Int | CmdStackDup Int | CmdStackDiscard Int | CmdStackDupTop | CmdStackSwap | CmdStackDiscardTop deriving (Eq, Show)
+data CmdStack = CmdStackPush Int | CmdStackDup Int | CmdStackDiscard Int | CmdStackDupTop | CmdStackSwap | CmdStackDiscardTop deriving (Eq, Show, Read)
 
-data CmdArith = CmdArithAdd | CmdArithSub | CmdArithMul | CmdArithDiv | CmdArithMod deriving (Eq, Show)
+data CmdArith = CmdArithAdd | CmdArithSub | CmdArithMul | CmdArithDiv | CmdArithMod deriving (Eq, Show, Read)
 
-data CmdHeap = CmdHeapStore | CmdHeapLoad deriving (Eq, Show)
+data CmdHeap = CmdHeapStore | CmdHeapLoad deriving (Eq, Show, Read)
 
-data CmdIO = CmdIOPrintChar | CmdIOPrintNum | CmdIOReadChar | CmdIOReadNum deriving (Eq, Show)
+data CmdIO = CmdIOPrintChar | CmdIOPrintNum | CmdIOReadChar | CmdIOReadNum deriving (Eq, Show, Read)
 
-data CmdFlow = CmdFlowMark Label | CmdFlowSub Label | CmdFlowJump Label | CmdFlowJumpIfZero Label | CmdFlowJumpIfNeg Label | CmdFlowRet | CmdFlowExit deriving (Eq, Show)
+data CmdFlow = CmdFlowMark Label | CmdFlowSub Label | CmdFlowJump Label | CmdFlowJumpIfZero Label | CmdFlowJumpIfNeg Label | CmdFlowRet | CmdFlowExit deriving (Eq, Show, Read)
 
 -- | A Token is a character in the Whitespace language. It can be a space, a tab, or a line feed.
 -- | A Token is represented as a Char. A space is 's', a tab is 't', and a line feed is 'n'.
@@ -65,6 +76,72 @@ type Token = Char
 
 -- | A label in the Whitespace language. A label is just a list of tokens.
 type Label = [Token]
+
+showProgram :: Program -> String
+showProgram p = unProgram p |> V.toList |>> showCommand |> concat
+
+showCommand :: Command -> String
+showCommand (CmdStack c) = " " <> showCmdStack c
+showCommand (CmdArith c) = "\t " <> showCmdArith c
+showCommand (CmdHeap c) = "\t\t" <> showCmdHeap c
+showCommand (CmdIO c) = "\t\n" <> showCmdIO c
+showCommand (CmdFlow c) = "\n" <> showCmdFlow c
+
+showInt :: Int -> String
+showInt n = sign : showPosInt (abs n) ++ "\n"
+  where
+    sign = if n < 0 then '\t' else ' '
+    showPosInt :: Int -> String
+    showPosInt x = toBinReversed x |> reverse |>> digitToToken
+    digitToToken :: Int -> Char
+    digitToToken 0 = ' '
+    digitToToken _ = '\t'
+    toBinReversed :: Int -> [Int]
+    toBinReversed 0 = []
+    toBinReversed x = x `mod` 2 : toBinReversed (x `div` 2)
+
+showLabel :: Label -> String
+showLabel l = (l <> "n") |>> showToken
+  where
+    showToken :: Token -> Char
+    showToken 's' = ' '
+    showToken 't' = '\t'
+    showToken 'n' = '\n'
+    showToken _ = error $ "Invalid token in label: " <> show l
+
+showCmdStack :: CmdStack -> String
+showCmdStack (CmdStackPush i) = " " <> showInt i
+showCmdStack (CmdStackDup i) = "\t " <> showInt i
+showCmdStack (CmdStackDiscard i) = "\t\n" <> showInt i
+showCmdStack CmdStackDupTop = "\n "
+showCmdStack CmdStackSwap = "\n\t"
+showCmdStack CmdStackDiscardTop = "\n\n"
+
+showCmdArith :: CmdArith -> String
+showCmdArith CmdArithAdd = "  "
+showCmdArith CmdArithSub = " \t"
+showCmdArith CmdArithMul = " \n"
+showCmdArith CmdArithDiv = "\t "
+showCmdArith CmdArithMod = "\t\t"
+
+showCmdHeap :: CmdHeap -> String
+showCmdHeap CmdHeapStore = " "
+showCmdHeap CmdHeapLoad = "\t"
+
+showCmdIO :: CmdIO -> String
+showCmdIO CmdIOPrintChar = "  "
+showCmdIO CmdIOPrintNum = " \t"
+showCmdIO CmdIOReadChar = "\t "
+showCmdIO CmdIOReadNum = "\t\t"
+
+showCmdFlow :: CmdFlow -> String
+showCmdFlow (CmdFlowMark l) = "  " <> showLabel l
+showCmdFlow (CmdFlowSub l) = " \t" <> showLabel l
+showCmdFlow (CmdFlowJump l) = " \n" <> showLabel l
+showCmdFlow (CmdFlowJumpIfZero l) = "\t " <> showLabel l
+showCmdFlow (CmdFlowJumpIfNeg l) = "\t\t" <> showLabel l
+showCmdFlow CmdFlowRet = "\t\n"
+showCmdFlow CmdFlowExit = "\n\n"
 
 -- | Tokenize a character into a Token.
 -- | A space character is tokenized as 's', a tab character is tokenized as 't', and a line feed character is tokenized as 'n'.

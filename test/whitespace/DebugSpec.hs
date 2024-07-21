@@ -1,7 +1,6 @@
 module Whitespace.DebugSpec where
 
 import SpecHelper
-import Whitespace.Debug
 
 spec :: Spec
 spec = do
