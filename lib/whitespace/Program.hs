@@ -2,16 +2,11 @@
 
 module Whitespace.Program
   ( Program (..),
-    commandAt,
-    commands,
-    Command (..),
-    CmdStack (..),
-    CmdArith (..),
-    CmdHeap (..),
-    CmdIO (..),
-    CmdFlow (..),
+    Instruction (..),
     findLabels,
-    fromCommands,
+    fromInstructions,
+    instructions,
+    instructionAt,
     Label,
     parseProgram,
     showProgram,
@@ -31,44 +26,8 @@ import Data.Vector (Vector)
 import Data.Vector qualified as V
 
 -- | A data type representing a Whitespace program.
--- | A program is just a list of commands.
-newtype Program = Program {unProgram :: Vector Command} deriving (Eq, Show)
-
--- | Create a program from a list of commands.
-fromCommands :: [Command] -> Program
-fromCommands = Program . V.fromList
-
--- | Get all the commands in the program.
-commands :: Program -> [Command]
-commands = V.toList . unProgram
-
--- | Get the command at a specific index in the program.
-commandAt :: Program -> Int -> Either String Command
-commandAt (Program p) i = p V.!? i |> maybeToEither ("No command at index: " <> show i)
-
--- | Check if a given index is a valid index in the program.
-validIndex :: Program -> Int -> Bool
-validIndex (Program p) i = i >= 0 && i < V.length p
-
--- | Find all the labels in the program.
-findLabels :: Program -> Either String (Map Label Int)
-findLabels (Program p) = do
-  let ls = [(l, i) | (CmdFlow (CmdFlowMark l), i) <- zip (V.toList p) [0 ..]]
-  guardE (unique $ fst <$> ls) "Duplicate labels found" (Map.fromList ls)
-
--- | A data type representing a Whitespace command.
--- | A command can be a stack manipulation command, an arithmetic command, a heap command, an I/O command, or a flow control command.
-data Command = CmdStack CmdStack | CmdArith CmdArith | CmdHeap CmdHeap | CmdIO CmdIO | CmdFlow CmdFlow deriving (Eq, Show, Read)
-
-data CmdStack = CmdStackPush Int | CmdStackDup Int | CmdStackDiscard Int | CmdStackDupTop | CmdStackSwap | CmdStackDiscardTop deriving (Eq, Show, Read)
-
-data CmdArith = CmdArithAdd | CmdArithSub | CmdArithMul | CmdArithDiv | CmdArithMod deriving (Eq, Show, Read)
-
-data CmdHeap = CmdHeapStore | CmdHeapLoad deriving (Eq, Show, Read)
-
-data CmdIO = CmdIOPrintChar | CmdIOPrintNum | CmdIOReadChar | CmdIOReadNum deriving (Eq, Show, Read)
-
-data CmdFlow = CmdFlowMark Label | CmdFlowSub Label | CmdFlowJump Label | CmdFlowJumpIfZero Label | CmdFlowJumpIfNeg Label | CmdFlowRet | CmdFlowExit deriving (Eq, Show, Read)
+-- | A program is just a list of instructions.
+newtype Program = Program {unProgram :: Vector Instruction} deriving (Eq, Show)
 
 -- | A Token is a character in the Whitespace language. It can be a space, a tab, or a line feed.
 -- | A Token is represented as a Char. A space is 's', a tab is 't', and a line feed is 'n'.
@@ -77,15 +36,58 @@ type Token = Char
 -- | A label in the Whitespace language. A label is just a list of tokens.
 type Label = [Token]
 
-showProgram :: Program -> String
-showProgram p = unProgram p |> V.toList |>> showCommand |> concat
+-- | A data type representing a single Whitespace instruction.
+data Instruction
+  = PUSH Int
+  | DUP Int
+  | DISCARD Int
+  | DUP_TOP
+  | SWAP
+  | DISCARD_TOP
+  | ADD
+  | SUB
+  | MUL
+  | DIV
+  | MOD
+  | STORE
+  | LOAD
+  | WRITE_CHAR
+  | WRITE_NUM
+  | READ_CHAR
+  | READ_NUM
+  | MARK Label
+  | CALL Label
+  | JUMP Label
+  | JZ Label
+  | JNG Label
+  | RET
+  | EXIT
+  deriving (Eq, Show, Read)
 
-showCommand :: Command -> String
-showCommand (CmdStack c) = " " <> showCmdStack c
-showCommand (CmdArith c) = "\t " <> showCmdArith c
-showCommand (CmdHeap c) = "\t\t" <> showCmdHeap c
-showCommand (CmdIO c) = "\t\n" <> showCmdIO c
-showCommand (CmdFlow c) = "\n" <> showCmdFlow c
+-- | Create a program from a list of instructions.
+fromInstructions :: [Instruction] -> Program
+fromInstructions = Program . V.fromList
+
+-- | Get the instructions in the program.
+instructions :: Program -> [Instruction]
+instructions = V.toList . unProgram
+
+-- | Get the instruction at a specific index in the program.
+instructionAt :: Program -> Int -> Either String Instruction
+instructionAt (Program p) i = p V.!? i |> maybeToEither ("No instruction at index: " <> show i)
+
+-- | Check if a given index is a valid index in the program.
+validIndex :: Program -> Int -> Bool
+validIndex (Program p) i = i >= 0 && i < V.length p
+
+-- | Find all the labels in the program.
+findLabels :: Program -> Either String (Map Label Int)
+findLabels (Program p) = do
+  let ls = [(l, i) | (MARK l, i) <- zip (V.toList p) [0 ..]]
+  guardE (unique $ fst <$> ls) "Duplicate labels found" (Map.fromList ls)
+
+showProgram :: Program -> String
+showProgram p = unProgram p |> V.toList |>> showInstruction |> concat
 
 showInt :: Int -> String
 showInt n = sign : showPosInt (abs n) ++ "\n"
@@ -109,39 +111,32 @@ showLabel l = (l <> "n") |>> showToken
     showToken 'n' = '\n'
     showToken _ = error $ "Invalid token in label: " <> show l
 
-showCmdStack :: CmdStack -> String
-showCmdStack (CmdStackPush i) = " " <> showInt i
-showCmdStack (CmdStackDup i) = "\t " <> showInt i
-showCmdStack (CmdStackDiscard i) = "\t\n" <> showInt i
-showCmdStack CmdStackDupTop = "\n "
-showCmdStack CmdStackSwap = "\n\t"
-showCmdStack CmdStackDiscardTop = "\n\n"
-
-showCmdArith :: CmdArith -> String
-showCmdArith CmdArithAdd = "  "
-showCmdArith CmdArithSub = " \t"
-showCmdArith CmdArithMul = " \n"
-showCmdArith CmdArithDiv = "\t "
-showCmdArith CmdArithMod = "\t\t"
-
-showCmdHeap :: CmdHeap -> String
-showCmdHeap CmdHeapStore = " "
-showCmdHeap CmdHeapLoad = "\t"
-
-showCmdIO :: CmdIO -> String
-showCmdIO CmdIOPrintChar = "  "
-showCmdIO CmdIOPrintNum = " \t"
-showCmdIO CmdIOReadChar = "\t "
-showCmdIO CmdIOReadNum = "\t\t"
-
-showCmdFlow :: CmdFlow -> String
-showCmdFlow (CmdFlowMark l) = "  " <> showLabel l
-showCmdFlow (CmdFlowSub l) = " \t" <> showLabel l
-showCmdFlow (CmdFlowJump l) = " \n" <> showLabel l
-showCmdFlow (CmdFlowJumpIfZero l) = "\t " <> showLabel l
-showCmdFlow (CmdFlowJumpIfNeg l) = "\t\t" <> showLabel l
-showCmdFlow CmdFlowRet = "\t\n"
-showCmdFlow CmdFlowExit = "\n\n"
+showInstruction :: Instruction -> String
+showInstruction = \case
+  (PUSH i) -> "  " <> showInt i
+  (DUP i) -> " \t " <> showInt i
+  (DISCARD i) -> " \t\n" <> showInt i
+  DUP_TOP -> " \n "
+  SWAP -> " \n\t"
+  DISCARD_TOP -> " \n\n"
+  ADD -> "\t  "
+  SUB -> "\t \t"
+  MUL -> "\t \n"
+  DIV -> "\t\t "
+  MOD -> "\t\t\t"
+  STORE -> "\t\t "
+  LOAD -> "\t\t\t"
+  WRITE_CHAR -> "\t\n  "
+  WRITE_NUM -> "\t\n \t"
+  READ_CHAR -> "\t\n\t "
+  READ_NUM -> "\t\n\t\t"
+  (MARK l) -> "\n  " <> showLabel l
+  (CALL l) -> "\n \t" <> showLabel l
+  (JUMP l) -> "\n \n" <> showLabel l
+  (JZ l) -> "\n\t " <> showLabel l
+  (JNG l) -> "\n\t\t" <> showLabel l
+  RET -> "\n\t\n"
+  EXIT -> "\n\n\n"
 
 -- | Tokenize a character into a Token.
 -- | A space character is tokenized as 's', a tab character is tokenized as 't', and a line feed character is tokenized as 'n'.
@@ -158,16 +153,16 @@ parseProgram = parseOnly programP . B.pack . mapMaybe tokeninze
 
 -- | Parse a complete Whitespace program.
 programP :: Parser Program
-programP = Program . V.fromList <$> (many commandP <* endOfInput)
+programP = Program . V.fromList <$> (many instructionP <* endOfInput)
 
--- | Parse a Whitespace command by trying to parse each type of command.
-commandP :: Parser Command
-commandP =
-  (CmdStack <$> ("s" *> cmdStackP))
-    <|> (CmdArith <$> ("ts" *> cmdArithP))
-    <|> (CmdHeap <$> ("tt" *> cmdHeapP))
-    <|> (CmdIO <$> ("tn" *> cmdIOP))
-    <|> (CmdFlow <$> ("n" *> cmdFlowP))
+-- | Parse a Whitespace instruction.
+instructionP :: Parser Instruction
+instructionP =
+  ("s" *> stackP)
+    <|> ("ts" *> arithP)
+    <|> ("tt" *> heapP)
+    <|> ("tn" *> ioP)
+    <|> ("n" *> flowP)
 
 -- | Parse a whitespace number.
 -- | A number consists of:
@@ -188,46 +183,46 @@ intP = do
 labelP :: Parser Label
 labelP = manyTill (satisfy (inClass "st")) "n"
 
--- | Parse a stack manipulation command.
-cmdStackP :: Parser CmdStack
-cmdStackP =
-  ("s" *> (CmdStackPush <$> intP))
-    <|> ("ts" *> (CmdStackDup <$> intP))
-    <|> ("tn" *> (CmdStackDiscard <$> intP))
-    <|> ("ns" $> CmdStackDupTop)
-    <|> ("nt" $> CmdStackSwap)
-    <|> ("nn" $> CmdStackDiscardTop)
+-- | Parse a stack manipulation instruction.
+stackP :: Parser Instruction
+stackP =
+  ("s" *> (PUSH <$> intP))
+    <|> ("ts" *> (DUP <$> intP))
+    <|> ("tn" *> (DISCARD <$> intP))
+    <|> ("ns" $> DUP_TOP)
+    <|> ("nt" $> SWAP)
+    <|> ("nn" $> DISCARD_TOP)
 
--- | Parse an arithmetic command.
-cmdArithP :: Parser CmdArith
-cmdArithP =
-  ("ss" $> CmdArithAdd)
-    <|> ("st" $> CmdArithSub)
-    <|> ("sn" $> CmdArithMul)
-    <|> ("ts" $> CmdArithDiv)
-    <|> ("tt" $> CmdArithMod)
+-- | Parse an arithmetic instruction.
+arithP :: Parser Instruction
+arithP =
+  ("ss" $> ADD)
+    <|> ("st" $> SUB)
+    <|> ("sn" $> MUL)
+    <|> ("ts" $> DIV)
+    <|> ("tt" $> MOD)
 
--- | Parse a heap command.
-cmdHeapP :: Parser CmdHeap
-cmdHeapP =
-  ("s" $> CmdHeapStore)
-    <|> ("t" $> CmdHeapLoad)
+-- | Parse a heap instruction.
+heapP :: Parser Instruction
+heapP =
+  ("s" $> STORE)
+    <|> ("t" $> LOAD)
 
--- | Parse an I/O command.
-cmdIOP :: Parser CmdIO
-cmdIOP =
-  ("ss" $> CmdIOPrintChar)
-    <|> ("st" $> CmdIOPrintNum)
-    <|> ("ts" $> CmdIOReadChar)
-    <|> ("tt" $> CmdIOReadNum)
+-- | Parse an I/O instruction.
+ioP :: Parser Instruction
+ioP =
+  ("ss" $> WRITE_CHAR)
+    <|> ("st" $> WRITE_NUM)
+    <|> ("ts" $> READ_CHAR)
+    <|> ("tt" $> READ_NUM)
 
--- | Parse a flow control command.
-cmdFlowP :: Parser CmdFlow
-cmdFlowP =
-  ("ss" *> (CmdFlowMark <$> labelP))
-    <|> ("st" *> (CmdFlowSub <$> labelP))
-    <|> ("sn" *> (CmdFlowJump <$> labelP))
-    <|> ("ts" *> (CmdFlowJumpIfZero <$> labelP))
-    <|> ("tt" *> (CmdFlowJumpIfNeg <$> labelP))
-    <|> ("tn" $> CmdFlowRet)
-    <|> ("nn" $> CmdFlowExit)
+-- | Parse a flow control instruction.
+flowP :: Parser Instruction
+flowP =
+  ("ss" *> (MARK <$> labelP))
+    <|> ("st" *> (CALL <$> labelP))
+    <|> ("sn" *> (JUMP <$> labelP))
+    <|> ("ts" *> (JZ <$> labelP))
+    <|> ("tt" *> (JNG <$> labelP))
+    <|> ("tn" $> RET)
+    <|> ("nn" $> EXIT)

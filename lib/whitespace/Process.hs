@@ -4,11 +4,13 @@ module Whitespace.Process
   ( Process (..),
     Status (..),
     binOp,
-    command,
+    binOpE,
+    call,
     discard,
     exit,
     get,
     incIp,
+    instruction,
     jump,
     load,
     output,
@@ -17,7 +19,6 @@ module Whitespace.Process
     push,
     ret,
     store,
-    sub,
     swap,
     readInt,
     readChar,
@@ -76,14 +77,14 @@ running = (== Running) . status
 exit :: Process -> Process
 exit p = p {status = Finished}
 
--- | Helper functions for manipulating the instruction pointer and the command it points to.
+-- | Helper functions for manipulating the instruction pointer and the instruction it points to.
 incIp :: Process -> Either String Process
 incIp p
   | validIndex (program p) (ip p + 1) = pure $ p {ip = ip p + 1}
   | otherwise = Left "Instruction pointer out of bounds"
 
-command :: Process -> Either String Command
-command p = commandAt (program p) (ip p)
+instruction :: Process -> Either String Instruction
+instruction p = instructionAt (program p) (ip p)
 
 -- | Helper functions for manipulating the process stack.
 push :: Process -> Int -> Process
@@ -103,10 +104,13 @@ swap p = do
   (b, p'') <- pop p'
   pure $ push (push p'' a) b
 
-binOp :: Process -> (Int -> Int -> Either String Int) -> Either String Process
-binOp p f = do
-  (a, p') <- pop p
-  (b, p'') <- pop p'
+binOp :: Process -> (Int -> Int -> Int) -> Either String Process
+binOp p f = binOpE p (pure ... f)
+
+binOpE :: Process -> (Int -> Int -> Either String Int) -> Either String Process
+binOpE p f = do
+  (b, p') <- pop p
+  (a, p'') <- pop p'
   c <- f a b
   pure $ push p'' c
 
@@ -156,8 +160,8 @@ jump p l = do
     then Right p {ip = x}
     else Left "Jump out of bounds"
 
-sub :: Process -> Label -> Either String Process
-sub p l = do
+call :: Process -> Label -> Either String Process
+call p l = do
   x <- Map.lookup l (labels p) |> maybeToEither ("Label not found: " <> show l)
   if validIndex (program p) x
     then

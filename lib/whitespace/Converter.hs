@@ -24,12 +24,12 @@ originalToReadable = mapMaybe go
     go _ = Nothing
 
 originalToRunnable :: String -> Either String String
-originalToRunnable code = (unlines . map show . commands) <$> parseProgram code
+originalToRunnable code = (unlines . map show . instructions) <$> parseProgram code
 
 runnableToOriginal :: String -> Either String String
 runnableToOriginal code = do
-  cmds <- lines code |> traverse readCommand
-  pure $ cmds |> fromCommands |> showProgram
+  cmds <- lines code |> traverse readInstruction
+  pure $ cmds |> fromInstructions |> showProgram
   where
-    readCommand :: String -> Either String Command
-    readCommand x = readMaybe x |> maybeToEither ("Invalid command" <> x)
+    readInstruction :: String -> Either String Instruction
+    readInstruction x = readMaybe x |> maybeToEither ("Invalid instruction: " <> x)

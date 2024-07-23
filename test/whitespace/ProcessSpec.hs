@@ -14,29 +14,29 @@ spec :: Spec
 spec = do
   describe "process" $ do
     it "can create a minimal Process" $ do
-      process "hello" (Program [CmdFlow CmdFlowExit]) `shouldBe` Right (Process (Program [CmdFlow CmdFlowExit]) "hello" [] [] [] [] [] 0 Running)
+      process "hello" (Program [EXIT]) `shouldBe` Right (Process (Program [EXIT]) "hello" [] [] [] [] [] 0 Running)
     it "can create a Process with labels" $ do
-      process "hello" (Program [CmdFlow (CmdFlowMark "label"), CmdFlow CmdFlowExit]) `shouldBe` Right (Process (Program [CmdFlow (CmdFlowMark "label"), CmdFlow CmdFlowExit]) "hello" [] [] [] [("label", 0)] [] 0 Running)
+      process "hello" (Program [MARK "label", EXIT]) `shouldBe` Right (Process (Program [MARK "label", EXIT]) "hello" [] [] [] [("label", 0)] [] 0 Running)
 
   describe "running" $ do
     it "starts with the status Running" $ do
-      (process "hello" (Program [CmdFlow CmdFlowExit]) |>> running) `shouldBe` Right True
+      (process "hello" (Program [EXIT]) |>> running) `shouldBe` Right True
 
   describe "exit" $ do
-    it "is Finished after an exit command" $ do
+    it "is Finished after an exit instruction" $ do
       (emptyProcess |> exit |> running) `shouldBe` False
 
   describe "incIp" $ do
     it "increments the ip" $ do
-      let p = emptyProcess {ip = 0, program = Program [CmdStack (CmdStackPush 0), CmdFlow CmdFlowExit]}
+      let p = emptyProcess {ip = 0, program = Program [PUSH 0, EXIT]}
       (p |> incIp |>> ip) `shouldBe` Right 1
     it "errors if the ip is out of bounds" $ do
       (emptyProcess |> incIp) `shouldBe` Left "Instruction pointer out of bounds"
 
-  describe "command" $ do
-    it "returns the command at the current ip" $ do
-      let p = emptyProcess {ip = 0, program = Program [CmdStack (CmdStackPush 0), CmdFlow CmdFlowExit]}
-      (p |> incIp >>= command) `shouldBe` Right (CmdFlow CmdFlowExit)
+  describe "instruction" $ do
+    it "returns the instruction at the current ip" $ do
+      let p = emptyProcess {ip = 0, program = Program [PUSH 0, EXIT]}
+      (p |> incIp >>= instruction) `shouldBe` Right (EXIT)
 
   describe "push" $ do
     it "pushes a value onto the stack" $ do
@@ -76,14 +76,14 @@ spec = do
     it "errors if the stack has only one element" $ do
       (emptyProcess {stack = [1]} |> swap) `shouldBe` Left "Stack underflow"
 
-  describe "binOp" $ do
+  describe "binOpE" $ do
     it "adds the top two values on the stack" $ do
       let p = emptyProcess {stack = [1, 2]}
-      (p |> flip binOp (pure ... (+)) |>> stack) `shouldBe` Right [3]
+      (p |> flip binOpE (pure ... (+)) |>> stack) `shouldBe` Right [3]
     it "errors if the stack is empty" $ do
-      (emptyProcess |> flip binOp (pure ... (+))) `shouldBe` Left "Stack underflow"
+      (emptyProcess |> flip binOpE (pure ... (+))) `shouldBe` Left "Stack underflow"
     it "errors if the stack has only one element" $ do
-      (emptyProcess {stack = [1]} |> flip binOp (pure ... (+))) `shouldBe` Left "Stack underflow"
+      (emptyProcess {stack = [1]} |> flip binOpE (pure ... (+))) `shouldBe` Left "Stack underflow"
 
   describe "discard" $ do
     it "discards 1 element below the top of the stack" $ do
@@ -158,55 +158,55 @@ spec = do
 
   describe "jump" $ do
     it "jumps to a label defined earlier" $ do
-      let p = process "" (Program [CmdFlow (CmdFlowMark "sss"), CmdFlow (CmdFlowJump "sss"), CmdFlow CmdFlowExit])
+      let p = process "" (Program [MARK "sss", JUMP "sss", EXIT])
       let p' = p >>= incIp
       (p' >>= flip jump "sss" |>> ip) `shouldBe` Right 0
     it "jumps to a label defined later" $ do
-      let p = process "" (Program [CmdFlow (CmdFlowJump "sss"), CmdFlow (CmdFlowMark "sss"), CmdFlow CmdFlowExit])
+      let p = process "" (Program [JUMP "sss", MARK "sss", EXIT])
       (p >>= flip jump "sss" |>> ip) `shouldBe` Right 1
     it "jumps to the correct label" $ do
-      let p = process "" (Program [CmdFlow (CmdFlowJump "sss"), CmdFlow (CmdFlowMark "ttt"), CmdFlow (CmdFlowMark "sss"), CmdFlow CmdFlowExit])
+      let p = process "" (Program [JUMP "sss", MARK "ttt", MARK "sss", EXIT])
       (p >>= flip jump "sss" |>> ip) `shouldBe` Right 2
     it "errors if the label is not found" $ do
-      let p = process "" (Program [CmdFlow (CmdFlowJump "sss"), CmdFlow CmdFlowExit])
+      let p = process "" (Program [JUMP "sss", EXIT])
       (p >>= flip jump "sss") `shouldBe` Left "Label not found: \"sss\""
     it "errors if the label points to out of bounds address" $ do
       let p = emptyProcess {labels = [("sss", 1)]}
       (p |> flip jump "sss") `shouldBe` Left "Jump out of bounds"
 
-  describe "sub" $ do
+  describe "call" $ do
     it "calls a label defined earlier" $ do
-      let p = process "" (Program [CmdFlow (CmdFlowMark "sss"), CmdFlow (CmdFlowSub "sss"), CmdFlow CmdFlowExit])
+      let p = process "" (Program [MARK "sss", CALL "sss", EXIT])
       let p' = p >>= incIp
-      (p' >>= flip sub "sss" |>> ip) `shouldBe` Right 0
+      (p' >>= flip call "sss" |>> ip) `shouldBe` Right 0
     it "calls a label defined later" $ do
-      let p = process "" (Program [CmdFlow (CmdFlowSub "sss"), CmdFlow (CmdFlowMark "sss"), CmdFlow CmdFlowExit])
-      (p >>= flip sub "sss" |>> ip) `shouldBe` Right 1
+      let p = process "" (Program [CALL "sss", MARK "sss", EXIT])
+      (p >>= flip call "sss" |>> ip) `shouldBe` Right 1
     it "calls the correct label" $ do
-      let p = process "" (Program [CmdFlow (CmdFlowSub "sss"), CmdFlow (CmdFlowMark "ttt"), CmdFlow (CmdFlowMark "sss"), CmdFlow CmdFlowExit])
-      (p >>= flip sub "sss" |>> ip) `shouldBe` Right 2
+      let p = process "" (Program [CALL "sss", MARK "ttt", MARK "sss", EXIT])
+      (p >>= flip call "sss" |>> ip) `shouldBe` Right 2
     it "adds the next ip to the call stack" $ do
-      let p = process "" (Program [CmdFlow (CmdFlowSub "sss"), CmdFlow (CmdFlowMark "sss"), CmdFlow CmdFlowExit])
-      (p >>= flip sub "sss" |>> callStack) `shouldBe` Right [1]
+      let p = process "" (Program [CALL "sss", MARK "sss", EXIT])
+      (p >>= flip call "sss" |>> callStack) `shouldBe` Right [1]
     it "adds the next ip to the call stack with non-empty call stack" $ do
-      let p = process "" (Program [CmdFlow (CmdFlowSub "sss"), CmdFlow (CmdFlowMark "sss"), CmdFlow CmdFlowExit])
+      let p = process "" (Program [CALL "sss", MARK "sss", EXIT])
       let p' = p >>= \x -> pure $ x {callStack = [2]}
-      (p' >>= flip sub "sss" |>> callStack) `shouldBe` Right [1, 2]
+      (p' >>= flip call "sss" |>> callStack) `shouldBe` Right [1, 2]
     it "errors if the label is not found" $ do
-      let p = process "" (Program [CmdFlow (CmdFlowSub "sss"), CmdFlow CmdFlowExit])
-      (p >>= flip sub "sss") `shouldBe` Left "Label not found: \"sss\""
+      let p = process "" (Program [CALL "sss", EXIT])
+      (p >>= flip call "sss") `shouldBe` Left "Label not found: \"sss\""
     it "errors if the label points to out of bounds address" $ do
-      let p = process "" (Program [CmdFlow (CmdFlowSub "sss"), CmdFlow CmdFlowExit])
+      let p = process "" (Program [CALL "sss", EXIT])
       let p' = p |>> \x -> x {labels = [("sss", 2)]}
-      (p' >>= flip sub "sss") `shouldBe` Left "Subroutine out of bounds"
+      (p' >>= flip call "sss") `shouldBe` Left "Subroutine out of bounds"
     it "errors if the next ip is out of bounds" $ do
-      let p = process "" (Program [CmdFlow (CmdFlowMark "sss"), CmdFlow CmdFlowExit, CmdFlow (CmdFlowSub "sss")])
+      let p = process "" (Program [MARK "sss", EXIT, CALL "sss"])
       let p' = p |>> \x -> x {ip = 2}
-      (p' >>= flip sub "sss") `shouldBe` Left "Subroutine out of bounds when returning"
+      (p' >>= flip call "sss") `shouldBe` Left "Subroutine out of bounds when returning"
 
   describe "ret" $ do
     it "returns to the previous ip" $ do
-      let p = process "" (Program [CmdFlow (CmdFlowSub "sss"), CmdStack (CmdStackPush 5), CmdFlow (CmdFlowMark "sss"), CmdFlow CmdFlowRet, CmdFlow CmdFlowExit])
+      let p = process "" (Program [CALL "sss", PUSH 5, MARK "sss", RET, EXIT])
       let p' = p |>> \x -> x {callStack = [1], ip = 3}
       (p' >>= ret |>> ip) `shouldBe` Right 1
     it "errors if the call stack is empty" $ do
