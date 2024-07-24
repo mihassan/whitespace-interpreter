@@ -3,11 +3,11 @@
 module Whitespace.Program
   ( Program (..),
     Instruction (..),
+    Label,
     findLabels,
     fromInstructions,
     instructions,
     instructionAt,
-    Label,
     parseProgram,
     showProgram,
     validIndex,
@@ -119,11 +119,11 @@ showInstruction = \case
   DUP_TOP -> " \n "
   SWAP -> " \n\t"
   DISCARD_TOP -> " \n\n"
-  ADD -> "\t  "
-  SUB -> "\t \t"
-  MUL -> "\t \n"
-  DIV -> "\t\t "
-  MOD -> "\t\t\t"
+  ADD -> "\t   "
+  SUB -> "\t  \t"
+  MUL -> "\t  \n"
+  DIV -> "\t \t "
+  MOD -> "\t \t\t"
   STORE -> "\t\t "
   LOAD -> "\t\t\t"
   WRITE_CHAR -> "\t\n  "
