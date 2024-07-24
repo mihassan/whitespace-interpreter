@@ -63,7 +63,6 @@ library
       Whitespace,
       Common.Util,
       Whitespace.Converter,
-      Whitespace.Debug,
       Whitespace.Interpreter,
       Whitespace.Process,
       Whitespace.Program
@@ -128,7 +127,6 @@ test-suite WhitespaceInterpreter-test
     other-modules:
       SpecHelper,
       Common.UtilSpec,
-      Whitespace.DebugSpec,
       Whitespace.InterpreterSpec,
       Whitespace.ProgramSpec,
       Whitespace.ProcessSpec
