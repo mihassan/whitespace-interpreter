@@ -2,7 +2,7 @@ module Common.Util ((...), (|>), (|>>), guardE, unique, maybeToEither) where
 
 import Data.Set qualified as Set -- From the 'containers' library
 
-infixl 9 ...
+infixr 9 ...
 
 -- >>> (length ... filter) even [1, 2, 3, 4]
 -- 2

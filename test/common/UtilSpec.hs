@@ -29,6 +29,14 @@ spec = do
     it "When predicate is False, error is mapped to Left" $ do
       guardE False "error" (5 :: Int) `shouldBe` Left "error"
 
+  describe "(...)" $ do
+    it "Can be used to compose two functions" $ do
+      ((+ 3) ... (*)) 5 2 `shouldBe` (13 :: Int)
+    it "Can be used to count occurrences of a character in a string" $ do
+      (length ... filter) (== 'l') "hello" `shouldBe` (2 :: Int)
+    it "Can be chained from left to right" $ do
+      ((+ 3) ... (* 2) ... (+)) 5 2 `shouldBe` (17 :: Int)
+
   describe "(|>)" $ do
     it "Can be used to apply an Int to a function" $ do
       (5 |> (+ 3)) `shouldBe` (8 :: Int)
