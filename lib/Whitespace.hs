@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Whitespace (whitespace, originalToReadable, originalToRunnable, readableToOriginal, runnableToOriginal) where
+module Whitespace (whitespace, module Whitespace.Converter) where
 
 import Common.Util
 import Whitespace.Converter
