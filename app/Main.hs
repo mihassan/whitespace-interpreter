@@ -58,7 +58,7 @@ convertCommand from to file = do
   let params = Params {from = from, to = to}
   case convert params code of
     Left err -> hPutStrLn stderr $ "Error converting code: " <> err
-    Right output -> putStrLn output
+    Right output -> putStr output
 
 main :: IO ()
 main = do
