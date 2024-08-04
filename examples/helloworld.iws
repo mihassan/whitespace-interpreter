@@ -1,23 +1,24 @@
-CmdStack (CmdStackPush 72)
-CmdIO CmdIOPrintChar
-CmdStack (CmdStackPush 69)
-CmdIO CmdIOPrintChar
-CmdStack (CmdStackPush 76)
-CmdIO CmdIOPrintChar
-CmdStack (CmdStackPush 76)
-CmdIO CmdIOPrintChar
-CmdStack (CmdStackPush 79)
-CmdIO CmdIOPrintChar
-CmdStack (CmdStackPush 32)
-CmdIO CmdIOPrintChar
-CmdStack (CmdStackPush 87)
-CmdIO CmdIOPrintChar
-CmdStack (CmdStackPush 79)
-CmdIO CmdIOPrintChar
-CmdStack (CmdStackPush 82)
-CmdIO CmdIOPrintChar
-CmdStack (CmdStackPush 76)
-CmdIO CmdIOPrintChar
-CmdStack (CmdStackPush 68)
-CmdIO CmdIOPrintChar
-CmdFlow CmdFlowExit
+PUSH 72
+WRITE_CHAR
+PUSH 69
+WRITE_CHAR
+PUSH 76
+WRITE_CHAR
+PUSH 76
+WRITE_CHAR
+PUSH 79
+WRITE_CHAR
+PUSH 32
+WRITE_CHAR
+PUSH 87
+WRITE_CHAR
+PUSH 79
+WRITE_CHAR
+PUSH 82
+WRITE_CHAR
+PUSH 76
+WRITE_CHAR
+PUSH 68
+WRITE_CHAR
+EXIT
+

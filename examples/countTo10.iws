@@ -1,15 +1,15 @@
-CmdStack (CmdStackPush 1)
-CmdFlow (CmdFlowMark "s")
-CmdStack (CmdStackPush 10)
-CmdStack (CmdStackDup 1)
-CmdArith CmdArithSub
-CmdFlow (CmdFlowJumpIfNeg "t")
-CmdStack CmdStackDupTop
-CmdIO CmdIOPrintNum
-CmdStack (CmdStackPush 10)
-CmdIO CmdIOPrintChar
-CmdStack (CmdStackPush 1)
-CmdArith CmdArithAdd
-CmdFlow (CmdFlowJump "s")
-CmdFlow (CmdFlowMark "t")
-CmdFlow CmdFlowExit
+PUSH 1
+MARK "s"
+PUSH 10
+DUP 1
+SUB
+JNG "t"
+DUP_TOP
+WRITE_NUM
+PUSH 10
+WRITE_CHAR
+PUSH 1
+ADD
+JUMP "s"
+MARK "t"
+EXIT
