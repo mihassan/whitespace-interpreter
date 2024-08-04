@@ -42,7 +42,7 @@ optsParser =
               <*> option auto (long "to" <> short 't' <> metavar "FORMAT" <> help "Format to convert to")
               <*> strArgument (metavar "FILE" <> help "File to convert")
           )
-          (progDesc "Convert a whitespace file to a different formats (i.e., Original, Readable, Runnable).")
+          (progDesc "Convert a whitespace file to a different formats (i.e., Whitespace, Readable, Interpreted).")
 
 runCommand :: FilePath -> IO ()
 runCommand file = do

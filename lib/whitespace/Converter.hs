@@ -7,7 +7,7 @@ import Data.Maybe
 import Text.Read
 import Whitespace.Program
 
-data Format = Original | Readable | Runnable deriving (Eq, Show, Read)
+data Format = Whitespace | Readable | Interpreted deriving (Eq, Show, Read)
 
 data Params = Params
   { from :: Format,
@@ -17,17 +17,17 @@ data Params = Params
 
 convert :: Params -> String -> Either String String
 convert (Params {..}) code = case (from, to) of
-  (Original, Readable) -> Right $ originalToReadable code
-  (Original, Runnable) -> originalToRunnable code
-  (Readable, Original) -> Right $ readableToOriginal code
-  (Runnable, Original) -> runnableToOriginal code
-  (Original, Original) -> Right code
+  (Whitespace, Readable) -> Right $ whitespaceToReadable code
+  (Whitespace, Interpreted) -> whitespaceToInterpreted code
+  (Readable, Whitespace) -> Right $ readableToWhitespace code
+  (Interpreted, Whitespace) -> interpretedToWhitespace code
+  (Whitespace, Whitespace) -> Right code
   (Readable, Readable) -> Right code
-  (Runnable, Runnable) -> Right code
+  (Interpreted, Interpreted) -> Right code
   _ -> Left "Invalid conversion"
 
-readableToOriginal :: String -> String
-readableToOriginal = mapMaybe go
+readableToWhitespace :: String -> String
+readableToWhitespace = mapMaybe go
   where
     go :: Char -> Maybe Char
     go 's' = Just ' '
@@ -35,8 +35,8 @@ readableToOriginal = mapMaybe go
     go 'n' = Just '\n'
     go _ = Nothing
 
-originalToReadable :: String -> String
-originalToReadable = mapMaybe go
+whitespaceToReadable :: String -> String
+whitespaceToReadable = mapMaybe go
   where
     go :: Char -> Maybe Char
     go ' ' = Just 's'
@@ -44,11 +44,11 @@ originalToReadable = mapMaybe go
     go '\n' = Just 'n'
     go _ = Nothing
 
-originalToRunnable :: String -> Either String String
-originalToRunnable code = (unlines . map show . instructions) <$> parseProgram code
+whitespaceToInterpreted :: String -> Either String String
+whitespaceToInterpreted code = (unlines . map show . instructions) <$> parseProgram code
 
-runnableToOriginal :: String -> Either String String
-runnableToOriginal code = do
+interpretedToWhitespace :: String -> Either String String
+interpretedToWhitespace code = do
   cmds <- lines code |> traverse readInstruction
   pure $ cmds |> fromInstructions |> showProgram
   where

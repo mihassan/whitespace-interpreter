@@ -6,12 +6,12 @@ import Whitespace.Converter
 
 fromReadable :: String -> String
 fromReadable code =
-  convert (Params {from = Readable, to = Original}) code |> \case
+  convert (Params {from = Readable, to = Whitespace}) code |> \case
     Left err -> error err
     Right x -> x
 
 toReadable :: String -> String
 toReadable code =
-  convert (Params {from = Original, to = Readable}) code |> \case
+  convert (Params {from = Whitespace, to = Readable}) code |> \case
     Left err -> error err
     Right x -> x
